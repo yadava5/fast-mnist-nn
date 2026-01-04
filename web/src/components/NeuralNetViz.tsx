@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 
 interface NeuralNetVizProps {
   confidence: number[];
@@ -10,6 +10,9 @@ interface NeuralNetVizProps {
 const INPUT_SAMPLE = 16;    // Show 16 nodes representing 784
 const HIDDEN_SAMPLE = 12;   // Show 12 nodes representing 100
 const OUTPUT_NODES = 10;    // Show all 10 output nodes
+const WIDTH = 400;
+const HEIGHT = 300;
+const LAYER_X = [60, 200, 340] as const; // X positions for input, hidden, output layers
 
 interface Particle {
   x: number;
@@ -21,102 +24,81 @@ interface Particle {
   opacity: number;
 }
 
+type AnimationPhase = 'idle' | 'layer1' | 'layer2' | 'complete';
+
 export function NeuralNetViz({ confidence, prediction, isAnimating }: NeuralNetVizProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [particles, setParticles] = useState<Particle[]>([]);
-  const [animationPhase, setAnimationPhase] = useState<'idle' | 'layer1' | 'layer2' | 'complete'>('idle');
   const animationRef = useRef<number | undefined>(undefined);
-
-  const width = 400;
-  const height = 300;
-  const layerX = [60, 200, 340]; // X positions for input, hidden, output layers
+  const particlesRef = useRef<Particle[]>([]);
+  const phaseRef = useRef<AnimationPhase>('idle');
+  const lastAnimatingRef = useRef(false);
   
-  // Calculate node positions
-  const getNodePositions = useCallback(() => {
+  // Calculate node positions (memoized since they don't change)
+  const nodePositions = useMemo(() => {
     const inputNodes = Array.from({ length: INPUT_SAMPLE }, (_, i) => ({
-      x: layerX[0],
-      y: 30 + (i * (height - 60)) / (INPUT_SAMPLE - 1),
+      x: LAYER_X[0],
+      y: 30 + (i * (HEIGHT - 60)) / (INPUT_SAMPLE - 1),
     }));
     
     const hiddenNodes = Array.from({ length: HIDDEN_SAMPLE }, (_, i) => ({
-      x: layerX[1],
-      y: 40 + (i * (height - 80)) / (HIDDEN_SAMPLE - 1),
+      x: LAYER_X[1],
+      y: 40 + (i * (HEIGHT - 80)) / (HIDDEN_SAMPLE - 1),
     }));
     
     const outputNodes = Array.from({ length: OUTPUT_NODES }, (_, i) => ({
-      x: layerX[2],
-      y: 30 + (i * (height - 60)) / (OUTPUT_NODES - 1),
+      x: LAYER_X[2],
+      y: 30 + (i * (HEIGHT - 60)) / (OUTPUT_NODES - 1),
     }));
     
     return { inputNodes, hiddenNodes, outputNodes };
-  }, [height]);
+  }, []);
 
-  // Trigger animation when isAnimating changes
-  useEffect(() => {
-    if (isAnimating) {
-      setAnimationPhase('layer1');
-      
-      // Create particles for layer 1 (input -> hidden)
-      const { inputNodes, hiddenNodes } = getNodePositions();
-      const newParticles: Particle[] = [];
-      
-      // Create particles from random input nodes to random hidden nodes
-      for (let i = 0; i < 20; i++) {
-        const sourceNode = inputNodes[Math.floor(Math.random() * inputNodes.length)];
-        const targetNode = hiddenNodes[Math.floor(Math.random() * hiddenNodes.length)];
-        newParticles.push({
-          x: sourceNode.x,
-          y: sourceNode.y,
-          targetX: targetNode.x,
-          targetY: targetNode.y,
-          progress: Math.random() * 0.3, // Stagger start
-          layer: 0,
-          opacity: 1,
-        });
-      }
-      
-      setParticles(newParticles);
-      
-      // Start layer 2 after delay
-      setTimeout(() => {
-        setAnimationPhase('layer2');
-        const { hiddenNodes, outputNodes } = getNodePositions();
-        const layer2Particles: Particle[] = [];
-        
-        // Create particles focusing on the predicted output
-        for (let i = 0; i < 15; i++) {
-          const sourceNode = hiddenNodes[Math.floor(Math.random() * hiddenNodes.length)];
-          // Bias particles toward predicted output
-          const targetIdx = prediction !== null && Math.random() > 0.4 
-            ? prediction 
-            : Math.floor(Math.random() * OUTPUT_NODES);
-          const targetNode = outputNodes[targetIdx];
-          
-          layer2Particles.push({
-            x: sourceNode.x,
-            y: sourceNode.y,
-            targetX: targetNode.x,
-            targetY: targetNode.y,
-            progress: Math.random() * 0.3,
-            layer: 1,
-            opacity: 1,
-          });
-        }
-        
-        setParticles(prev => [...prev.filter(p => p.progress < 1), ...layer2Particles]);
-      }, 400);
-      
-      // Complete animation
-      setTimeout(() => {
-        setAnimationPhase('complete');
-        setParticles([]);
-      }, 1000);
-    } else {
-      setAnimationPhase('idle');
+  // Create particles for animation
+  const createLayer1Particles = useCallback(() => {
+    const { inputNodes, hiddenNodes } = nodePositions;
+    const newParticles: Particle[] = [];
+    
+    for (let i = 0; i < 20; i++) {
+      const sourceNode = inputNodes[Math.floor(Math.random() * inputNodes.length)];
+      const targetNode = hiddenNodes[Math.floor(Math.random() * hiddenNodes.length)];
+      newParticles.push({
+        x: sourceNode.x,
+        y: sourceNode.y,
+        targetX: targetNode.x,
+        targetY: targetNode.y,
+        progress: Math.random() * 0.3,
+        layer: 0,
+        opacity: 1,
+      });
     }
-  }, [isAnimating, prediction, getNodePositions]);
+    return newParticles;
+  }, [nodePositions]);
 
-  // Animation loop
+  const createLayer2Particles = useCallback((pred: number | null) => {
+    const { hiddenNodes, outputNodes } = nodePositions;
+    const layer2Particles: Particle[] = [];
+    
+    for (let i = 0; i < 15; i++) {
+      const sourceNode = hiddenNodes[Math.floor(Math.random() * hiddenNodes.length)];
+      const targetIdx = pred !== null && Math.random() > 0.4 
+        ? pred 
+        : Math.floor(Math.random() * OUTPUT_NODES);
+      const targetNode = outputNodes[targetIdx];
+      
+      layer2Particles.push({
+        x: sourceNode.x,
+        y: sourceNode.y,
+        targetX: targetNode.x,
+        targetY: targetNode.y,
+        progress: Math.random() * 0.3,
+        layer: 1,
+        opacity: 1,
+      });
+    }
+    return layer2Particles;
+  }, [nodePositions]);
+
+  // Animation loop - uses refs to avoid setState in effect
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -124,11 +106,38 @@ export function NeuralNetViz({ confidence, prediction, isAnimating }: NeuralNetV
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    let layer2Timeout: ReturnType<typeof setTimeout> | null = null;
+    let completeTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    // Handle animation start
+    if (isAnimating && !lastAnimatingRef.current) {
+      phaseRef.current = 'layer1';
+      particlesRef.current = createLayer1Particles();
+      
+      layer2Timeout = setTimeout(() => {
+        phaseRef.current = 'layer2';
+        const remaining = particlesRef.current.filter(p => p.progress < 1);
+        particlesRef.current = [...remaining, ...createLayer2Particles(prediction)];
+      }, 400);
+      
+      completeTimeout = setTimeout(() => {
+        phaseRef.current = 'complete';
+        particlesRef.current = [];
+      }, 1000);
+    } else if (!isAnimating && lastAnimatingRef.current) {
+      phaseRef.current = 'idle';
+      particlesRef.current = [];
+    }
+    
+    lastAnimatingRef.current = isAnimating;
+
     const render = () => {
       // Clear canvas
-      ctx.clearRect(0, 0, width, height);
+      ctx.clearRect(0, 0, WIDTH, HEIGHT);
       
-      const { inputNodes, hiddenNodes, outputNodes } = getNodePositions();
+      const { inputNodes, hiddenNodes, outputNodes } = nodePositions;
+      const currentPhase = phaseRef.current;
+      const particles = particlesRef.current;
       
       // Get theme colors
       const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
@@ -144,7 +153,7 @@ export function NeuralNetViz({ confidence, prediction, isAnimating }: NeuralNetV
       // Input to hidden connections (sparse)
       inputNodes.forEach((input, i) => {
         hiddenNodes.forEach((hidden, j) => {
-          if ((i + j) % 3 === 0) { // Only draw some connections
+          if ((i + j) % 3 === 0) {
             ctx.beginPath();
             ctx.moveTo(input.x, input.y);
             ctx.lineTo(hidden.x, hidden.y);
@@ -165,7 +174,7 @@ export function NeuralNetViz({ confidence, prediction, isAnimating }: NeuralNetV
         });
       });
       
-      // Draw particles
+      // Draw and update particles
       particles.forEach(particle => {
         if (particle.progress >= 0 && particle.progress <= 1) {
           const x = particle.x + (particle.targetX - particle.x) * particle.progress;
@@ -176,25 +185,22 @@ export function NeuralNetViz({ confidence, prediction, isAnimating }: NeuralNetV
           ctx.fillStyle = `rgba(102, 126, 234, ${particle.opacity * (1 - particle.progress * 0.5)})`;
           ctx.fill();
           
-          // Glow effect
           ctx.beginPath();
           ctx.arc(x, y, 6, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(102, 126, 234, ${particle.opacity * 0.3 * (1 - particle.progress * 0.5)})`;
           ctx.fill();
         }
+        particle.progress += 0.03;
       });
       
-      // Update particles
-      setParticles(prev => prev.map(p => ({
-        ...p,
-        progress: p.progress + 0.03,
-      })).filter(p => p.progress <= 1.2));
+      // Remove completed particles
+      particlesRef.current = particles.filter(p => p.progress <= 1.2);
       
       // Draw input layer nodes
       inputNodes.forEach((node) => {
         ctx.beginPath();
         ctx.arc(node.x, node.y, 4, 0, Math.PI * 2);
-        ctx.fillStyle = animationPhase !== 'idle' ? activeNodeColor : nodeColor;
+        ctx.fillStyle = currentPhase !== 'idle' ? activeNodeColor : nodeColor;
         ctx.fill();
       });
       
@@ -202,7 +208,7 @@ export function NeuralNetViz({ confidence, prediction, isAnimating }: NeuralNetV
       hiddenNodes.forEach((node) => {
         ctx.beginPath();
         ctx.arc(node.x, node.y, 5, 0, Math.PI * 2);
-        ctx.fillStyle = animationPhase === 'layer2' || animationPhase === 'complete' 
+        ctx.fillStyle = currentPhase === 'layer2' || currentPhase === 'complete' 
           ? activeNodeColor 
           : nodeColor;
         ctx.fill();
@@ -214,19 +220,17 @@ export function NeuralNetViz({ confidence, prediction, isAnimating }: NeuralNetV
         const isWinner = prediction === i;
         const radius = isWinner ? 10 : 6 + conf * 4;
         
-        // Glow for winner
-        if (isWinner && animationPhase === 'complete') {
+        if (isWinner && currentPhase === 'complete') {
           ctx.beginPath();
           ctx.arc(node.x, node.y, radius + 8, 0, Math.PI * 2);
           ctx.fillStyle = 'rgba(102, 126, 234, 0.3)';
           ctx.fill();
         }
         
-        // Node
         ctx.beginPath();
         ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
         
-        if (isWinner && (animationPhase === 'complete' || animationPhase === 'idle')) {
+        if (isWinner && (currentPhase === 'complete' || currentPhase === 'idle')) {
           ctx.fillStyle = '#667eea';
         } else if (conf > 0.1) {
           ctx.fillStyle = `rgba(102, 126, 234, ${0.3 + conf * 0.7})`;
@@ -235,7 +239,6 @@ export function NeuralNetViz({ confidence, prediction, isAnimating }: NeuralNetV
         }
         ctx.fill();
         
-        // Label
         ctx.fillStyle = textColor;
         ctx.font = '10px -apple-system, sans-serif';
         ctx.textAlign = 'center';
@@ -248,14 +251,14 @@ export function NeuralNetViz({ confidence, prediction, isAnimating }: NeuralNetV
       ctx.font = '11px -apple-system, sans-serif';
       ctx.textAlign = 'center';
       
-      ctx.fillText('Input', layerX[0], height - 10);
-      ctx.fillText('784', layerX[0], height - 22);
+      ctx.fillText('Input', LAYER_X[0], HEIGHT - 10);
+      ctx.fillText('784', LAYER_X[0], HEIGHT - 22);
       
-      ctx.fillText('Hidden', layerX[1], height - 10);
-      ctx.fillText('100', layerX[1], height - 22);
+      ctx.fillText('Hidden', LAYER_X[1], HEIGHT - 10);
+      ctx.fillText('100', LAYER_X[1], HEIGHT - 22);
       
-      ctx.fillText('Output', layerX[2], height - 10);
-      ctx.fillText('10', layerX[2], height - 22);
+      ctx.fillText('Output', LAYER_X[2], HEIGHT - 10);
+      ctx.fillText('10', LAYER_X[2], HEIGHT - 22);
       
       animationRef.current = requestAnimationFrame(render);
     };
@@ -266,16 +269,22 @@ export function NeuralNetViz({ confidence, prediction, isAnimating }: NeuralNetV
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
+      if (layer2Timeout) {
+        clearTimeout(layer2Timeout);
+      }
+      if (completeTimeout) {
+        clearTimeout(completeTimeout);
+      }
     };
-  }, [particles, confidence, prediction, animationPhase, getNodePositions, height]);
+  }, [confidence, prediction, isAnimating, nodePositions, createLayer1Particles, createLayer2Particles]);
 
   return (
     <div className="neural-net-viz">
       <h3>🔗 Network Architecture</h3>
       <canvas 
         ref={canvasRef} 
-        width={width} 
-        height={height}
+        width={WIDTH} 
+        height={HEIGHT}
         className="neural-net-canvas"
       />
       {prediction !== null && confidence.length > 0 && (
