@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstring>
 #include <iostream>
+#include <random>
 #include <vector>
 
 #include "fast_mnist/NeuralNet.h"
@@ -461,23 +462,42 @@ NeuralNet::NeuralNet(const std::vector<int>& layers)
 
 /*
  * Helper method called from the constructor to initialize the biases
- * and weight matrices for each layer in the neural netowrk.
+ * and weight matrices for each layer in the neural network.
+ * Uses random initialization with Xavier/He-style scaling.
  */
 void NeuralNet::initBiasAndWeightMatrices(
     const std::vector<int>& layerSizesIn,
     MatrixVec& biasesOut,
     MatrixVec& weightsOut) const {
-    // Create the column matrices for each layer in the nnet.  Each
-    // value is initialized with a random value in the range 0 to 1.0
+    // Use random engine for weight initialization
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    
+    // Create the column matrices for each layer in the nnet.
     for (size_t lyr = 1; (lyr < layerSizesIn.size()); lyr++) {
         // Convenience variables to keep code readable
         const int rows = layerSizesIn.at(lyr);
         const int cols = layerSizesIn.at(lyr - 1);
 
-        biasesOut.push_back(Matrix(rows, 1));
+        // Initialize biases with small random values
+        Matrix bias(rows, 1, Matrix::NoInit{});
+        std::normal_distribution<double> biasDist(0.0, 1.0);
+        for (int r = 0; r < rows; ++r) {
+            bias[r][0] = biasDist(gen);
+        }
+        biasesOut.push_back(std::move(bias));
 
-        // Create the 2-D matrices of weights for each layer
-        weightsOut.push_back(Matrix(rows, cols));
+        // Initialize weights with scaled random values (Xavier init)
+        // Standard deviation = 1/sqrt(cols) for better gradient flow
+        Matrix weight(rows, cols, Matrix::NoInit{});
+        double stddev = 1.0 / std::sqrt(static_cast<double>(cols));
+        std::normal_distribution<double> weightDist(0.0, stddev);
+        for (int r = 0; r < rows; ++r) {
+            for (int c = 0; c < cols; ++c) {
+                weight[r][c] = weightDist(gen);
+            }
+        }
+        weightsOut.push_back(std::move(weight));
     }
 }
 
@@ -544,6 +564,11 @@ std::istream& operator>>(std::istream& is, NeuralNet& nnet) {
     is >> nnet.layerSizes;
     const int layerCount =
         static_cast<int>(nnet.layerSizes[0].size());
+    
+    // Clear existing biases and weights before loading
+    nnet.biases.clear();
+    nnet.weights.clear();
+    
     // Now read the biases for each layer
     Matrix temp;
     for (int i = 0; (i < layerCount - 1); i++) {

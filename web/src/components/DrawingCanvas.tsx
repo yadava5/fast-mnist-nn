@@ -2,15 +2,24 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 
 interface DrawingCanvasProps {
   onPredict: (imageData: number[]) => void;
+  onStroke?: () => void;
   disabled?: boolean;
+  isLoading?: boolean;
 }
 
 const CANVAS_SIZE = 280;
 const GRID_SIZE = 28;
 
-export function DrawingCanvas({ onPredict, disabled = false }: DrawingCanvasProps) {
+export function DrawingCanvas({ 
+  onPredict, 
+  onStroke,
+  disabled = false,
+  isLoading = false 
+}: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [hasContent, setHasContent] = useState(false);
+  const lastPredictRef = useRef<number[]>([]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -71,10 +80,21 @@ export function DrawingCanvas({ onPredict, disabled = false }: DrawingCanvasProp
       ctx.stroke();
       ctx.beginPath();
       ctx.moveTo(x, y);
+      setHasContent(true);
     }
   };
 
   const stopDrawing = () => {
+    if (isDrawing && hasContent) {
+      // Trigger prediction when stroke ends
+      const imageData = getImageData();
+      // Only predict if content changed meaningfully
+      if (imageData.some((v, i) => Math.abs(v - (lastPredictRef.current[i] || 0)) > 0.01)) {
+        lastPredictRef.current = imageData;
+        onPredict(imageData);
+        onStroke?.();
+      }
+    }
     setIsDrawing(false);
   };
 
@@ -109,11 +129,6 @@ export function DrawingCanvas({ onPredict, disabled = false }: DrawingCanvasProp
     return pixels;
   }, []);
 
-  const handlePredict = () => {
-    const imageData = getImageData();
-    onPredict(imageData);
-  };
-
   const handleClear = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -123,10 +138,24 @@ export function DrawingCanvas({ onPredict, disabled = false }: DrawingCanvasProp
 
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    setHasContent(false);
+    lastPredictRef.current = [];
   };
+
+  // Get theme-aware border color
+  const isDark = typeof document !== 'undefined' 
+    ? document.documentElement.getAttribute('data-theme') !== 'light'
+    : true;
+  const borderColor = isDark ? '#444' : '#ccc';
 
   return (
     <div className="drawing-canvas-container">
+      {isLoading && (
+        <div className="canvas-loading-overlay">
+          <div className="mini-spinner"></div>
+          <span>Analyzing...</span>
+        </div>
+      )}
       <canvas
         ref={canvasRef}
         width={CANVAS_SIZE}
@@ -140,16 +169,13 @@ export function DrawingCanvas({ onPredict, disabled = false }: DrawingCanvasProp
         onTouchMove={draw}
         onTouchEnd={stopDrawing}
         style={{
-          border: '2px solid #444',
+          border: `2px solid ${borderColor}`,
           borderRadius: '8px',
           cursor: disabled ? 'not-allowed' : 'crosshair',
           touchAction: 'none',
         }}
       />
       <div className="canvas-buttons">
-        <button onClick={handlePredict} disabled={disabled} className="predict-btn">
-          🔮 Predict
-        </button>
         <button onClick={handleClear} disabled={disabled} className="clear-btn">
           🗑️ Clear
         </button>

@@ -4,6 +4,8 @@
  */
 
 #include <chrono>
+#include <cmath>
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -17,17 +19,63 @@
 
 using json = nlohmann::json;
 
-// Pre-trained network weights (simple network for demo)
-// In production, load from a file
-static NeuralNet createDemoNetwork() {
-    // Create a network with the MNIST architecture
+/**
+ * Baseline (scalar) matrix-vector multiply + sigmoid.
+ * This is intentionally NOT optimized to provide a fair comparison.
+ */
+static void baseline_gemv_sigmoid(const Matrix& W, const Matrix& b,
+                                  const std::vector<double>& x,
+                                  std::vector<double>& y) {
+    const std::size_t m = W.height(), n = W.width();
+    for (std::size_t i = 0; i < m; ++i) {
+        double s = 0.0;
+        for (std::size_t k = 0; k < n; ++k) {
+            s += W[i][k] * x[k];
+        }
+        s += b[i][0];
+        y[i] = 1.0 / (1.0 + std::exp(-s));
+    }
+}
+
+/**
+ * Baseline classify using simple scalar operations.
+ * No SIMD, no optimizations - just straightforward C++.
+ */
+static std::vector<double> baseline_classify(const NeuralNet& net,
+                                             const std::vector<double>& input) {
+    const auto& weights = net.getWeights();
+    const auto& biases = net.getBiases();
+    
+    // Layer 1: input -> hidden
+    std::vector<double> hidden(weights[0].height());
+    baseline_gemv_sigmoid(weights[0], biases[0], input, hidden);
+    
+    // Layer 2: hidden -> output
+    std::vector<double> output(weights[1].height());
+    baseline_gemv_sigmoid(weights[1], biases[1], hidden, output);
+    
+    return output;
+}
+
+// Model file path
+static std::string g_modelPath = "model.weights";
+
+// Load a trained network from file
+static NeuralNet loadNetwork(const std::string& path) {
     NeuralNet net({784, 30, 10});
+    std::ifstream file(path);
+    if (file) {
+        file >> net;
+        std::cout << "   ✓ Loaded model from " << path << "\n";
+    } else {
+        std::cout << "   ⚠ No model file found at " << path << "\n";
+        std::cout << "     Run: ./fast_mnist_trainer data 10000 5 model.weights\n";
+    }
     return net;
 }
 
 // Global networks for comparison
-static NeuralNet g_baselineNet = createDemoNetwork();
-static NeuralNet g_optimizedNet = createDemoNetwork();
+static NeuralNet g_network({784, 30, 10});
 
 /**
  * Classify an image using the neural network and return timing info.
@@ -72,9 +120,20 @@ json classifyWithTiming(NeuralNet& net, const Matrix& input) {
 
 int main(int argc, char* argv[]) {
     int port = 8080;
+    std::string modelPath = "model.weights";
+    
     if (argc > 1) {
         port = std::stoi(argv[1]);
     }
+    if (argc > 2) {
+        modelPath = argv[2];
+    }
+    
+    std::cout << "🧠 Fast MNIST API Server\n";
+    std::cout << "   Loading model...\n";
+    
+    // Load the trained model
+    g_network = loadNetwork(modelPath);
     
     httplib::Server svr;
     
@@ -123,42 +182,44 @@ int main(int argc, char* argv[]) {
             
             // Create input matrix from pixels
             Matrix input(784, 1, Matrix::NoInit{});
+            std::vector<double> inputVec(784);
             for (size_t i = 0; i < 784; ++i) {
                 input[i][0] = pixels[i];
+                inputVec[i] = pixels[i];
             }
             
-            // Run classification on both networks
-            // For demo purposes, we simulate baseline being slower
-            // In production, you'd have two differently compiled networks
+            // Run multiple iterations for accurate timing
+            const int iterations = 100;
             
-            // Baseline classification (simulate some overhead)
+            // Baseline classification (scalar, no SIMD)
             auto baselineStart = std::chrono::high_resolution_clock::now();
-            Matrix baselineResult = g_baselineNet.classify(input);
-            // Add artificial delay to simulate non-optimized version
-            volatile double dummy = 0;
-            for (int i = 0; i < 100000; ++i) {
-                dummy += i * 0.0001;
+            std::vector<double> baselineResult;
+            for (int iter = 0; iter < iterations; ++iter) {
+                baselineResult = baseline_classify(g_network, inputVec);
             }
             auto baselineEnd = std::chrono::high_resolution_clock::now();
             auto baselineTime = std::chrono::duration<double, std::milli>(
-                baselineEnd - baselineStart).count();
+                baselineEnd - baselineStart).count() / iterations;
             
-            // Optimized classification
+            // Optimized classification (SIMD-accelerated)
             auto optimizedStart = std::chrono::high_resolution_clock::now();
-            Matrix optimizedResult = g_optimizedNet.classify(input);
+            Matrix result;
+            for (int iter = 0; iter < iterations; ++iter) {
+                result = g_network.classify(input);
+            }
             auto optimizedEnd = std::chrono::high_resolution_clock::now();
             auto optimizedTime = std::chrono::duration<double, std::milli>(
-                optimizedEnd - optimizedStart).count();
+                optimizedEnd - optimizedStart).count() / iterations;
             
-            // Find prediction from optimized result
+            // Find prediction from result
             int prediction = 0;
-            double maxVal = optimizedResult[0][0];
+            double maxVal = result[0][0];
             std::vector<double> confidence(10);
             
             for (int i = 0; i < 10; ++i) {
-                confidence[i] = optimizedResult[i][0];
-                if (optimizedResult[i][0] > maxVal) {
-                    maxVal = optimizedResult[i][0];
+                confidence[i] = result[i][0];
+                if (result[i][0] > maxVal) {
+                    maxVal = result[i][0];
                     prediction = i;
                 }
             }
@@ -193,7 +254,6 @@ int main(int argc, char* argv[]) {
         }
     });
     
-    std::cout << "🧠 Fast MNIST API Server\n";
     std::cout << "   Listening on http://localhost:" << port << "\n";
     std::cout << "   Endpoints:\n";
     std::cout << "     GET  /health  - Health check\n";

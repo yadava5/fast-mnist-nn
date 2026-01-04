@@ -111,6 +111,18 @@ class NeuralNet {
      */
     void train(const std::string& path);
 
+    /**
+     * Get read-only access to the weight matrices.
+     * \return Const reference to the vector of weight matrices.
+     */
+    const MatrixVec& getWeights() const { return weights; }
+
+    /**
+     * Get read-only access to the bias vectors.
+     * \return Const reference to the vector of bias matrices.
+     */
+    const MatrixVec& getBiases() const { return biases; }
+
   protected:
     /**
      * This is an internal helper method that is used to initializes

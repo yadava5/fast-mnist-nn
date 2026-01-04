@@ -43,3 +43,9 @@ docs/doxygen/
 # Web frontend
 web/node_modules/
 web/dist/
+
+# Compiled binaries
+test_model
+fast_mnist_cli
+fast_mnist_server
+fast_mnist_trainer

@@ -62,6 +62,10 @@ endif()
 add_executable(fast_mnist_cli apps/fast_mnist_cli.cpp)
 target_link_libraries(fast_mnist_cli PRIVATE fast_mnist)
 
+# Model trainer
+add_executable(fast_mnist_trainer apps/train_model.cpp)
+target_link_libraries(fast_mnist_trainer PRIVATE fast_mnist)
+
 # Web API Server
 option(FAST_MNIST_ENABLE_SERVER "Enable HTTP API server" ON)
 if(FAST_MNIST_ENABLE_SERVER)

@@ -14,10 +14,15 @@ export interface HealthResponse {
   version: string;
 }
 
-export async function predict(pixels: number[]): Promise<PredictionResponse> {
-  const response = await axios.post<PredictionResponse>(`${API_BASE}/predict`, {
-    pixels,
-  });
+export async function predict(
+  pixels: number[],
+  signal?: AbortSignal
+): Promise<PredictionResponse> {
+  const response = await axios.post<PredictionResponse>(
+    `${API_BASE}/predict`,
+    { pixels },
+    { signal }
+  );
   return response.data;
 }
 
@@ -25,3 +30,4 @@ export async function healthCheck(): Promise<HealthResponse> {
   const response = await axios.get<HealthResponse>(`${API_BASE}/health`);
   return response.data;
 }
+
