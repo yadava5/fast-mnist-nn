@@ -39,3 +39,7 @@ TestingSetList.txt
 
 # Doxygen output
 docs/doxygen/
+
+# Web frontend
+web/node_modules/
+web/dist/

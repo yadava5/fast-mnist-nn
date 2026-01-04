@@ -62,6 +62,27 @@ endif()
 add_executable(fast_mnist_cli apps/fast_mnist_cli.cpp)
 target_link_libraries(fast_mnist_cli PRIVATE fast_mnist)
 
+# Web API Server
+option(FAST_MNIST_ENABLE_SERVER "Enable HTTP API server" ON)
+if(FAST_MNIST_ENABLE_SERVER)
+  add_executable(fast_mnist_server apps/server.cpp)
+  target_include_directories(fast_mnist_server PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
+  target_link_libraries(fast_mnist_server PRIVATE fast_mnist)
+  
+  # Find threads library (required by httplib)
+  find_package(Threads REQUIRED)
+  target_link_libraries(fast_mnist_server PRIVATE Threads::Threads)
+  
+  # macOS needs additional frameworks for networking
+  if(APPLE)
+    find_library(COREFOUNDATION_LIBRARY CoreFoundation)
+    find_library(SECURITY_LIBRARY Security)
+    if(COREFOUNDATION_LIBRARY AND SECURITY_LIBRARY)
+      target_link_libraries(fast_mnist_server PRIVATE ${COREFOUNDATION_LIBRARY} ${SECURITY_LIBRARY})
+    endif()
+  endif()
+endif()
+
 include(CTest)
 if(BUILD_TESTING)
   include(FetchContent)
