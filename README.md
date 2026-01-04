@@ -160,8 +160,8 @@ The script auto-installs `tqdm` for progress bars; pass
 
 MIT -- see `LICENSE`.
 
-[ci-badge]: https://github.com/ShreeChaturvedi/fast-mnist-nn/actions/workflows/ci.yml/badge.svg
-[ci-url]: https://github.com/ShreeChaturvedi/fast-mnist-nn/actions/workflows/ci.yml
+[ci-badge]: https://github.com/yadava5/fast-mnist-nn/actions/workflows/ci.yml/badge.svg
+[ci-url]: https://github.com/yadava5/fast-mnist-nn/actions/workflows/ci.yml
 [license-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [license-url]: LICENSE
 [cpp-badge]: https://img.shields.io/badge/C%2B%2B-17-blue.svg
