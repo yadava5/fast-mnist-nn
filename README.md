@@ -10,12 +10,18 @@
 [![ci][ci-badge]][ci-url]
 [![license][license-badge]][license-url]
 [![c++][cpp-badge]][cpp-url]
+[![react][react-badge]][react-url]
+[![typescript][ts-badge]][ts-url]
 
 High-performance C++ neural network for MNIST digit recognition with
-SIMD kernels, OpenMP, and reproducible benchmarks.
+SIMD kernels, OpenMP, and reproducible benchmarks. Includes an interactive
+React web app for drawing and classifying digits in real-time.
 
 ## Highlights
 
+- **Interactive Web UI** with live prediction as you draw.
+- Animated neural network visualization showing activations.
+- Dark/light theme toggle with system preference detection.
 - SIMD-accelerated matrix ops (AVX2/AVX-512/NEON) with aligned storage.
 - OpenMP-aware hot paths for dot, transpose, and axpy.
 - P2 PGM parser with in-memory + on-disk cache for repeat runs.
@@ -134,6 +140,43 @@ macOS quickstart:
 ./build/fast_mnist_cli data 5000 10 TrainingSetList.txt TestingSetList.txt
 ```
 
+## Web Frontend
+
+The project includes an interactive React + TypeScript web app for drawing
+digits and getting real-time predictions.
+
+### Features
+
+- **Live Prediction**: Predictions update as you draw (300ms debounce).
+- **Neural Network Visualization**: Animated particles show activations
+  flowing through the 784 → 100 → 10 network.
+- **Dark/Light Theme**: Toggle with system preference detection and
+  localStorage persistence.
+- **Responsive Design**: Works on desktop and mobile.
+
+### Run the Web App
+
+1. Start the C++ API server:
+   ```sh
+   ./build/fast_mnist_server 8080 model.weights
+   ```
+
+2. In another terminal, start the frontend:
+   ```sh
+   cd web
+   npm install
+   npm run dev
+   ```
+
+3. Open http://localhost:5173 in your browser.
+
+### API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| POST | `/predict` | Classify digit (accepts `{"pixels": [784 floats]}`) |
+
 ## Formatting
 
 ```sh
@@ -166,3 +209,7 @@ MIT -- see `LICENSE`.
 [license-url]: LICENSE
 [cpp-badge]: https://img.shields.io/badge/C%2B%2B-17-blue.svg
 [cpp-url]: https://isocpp.org/
+[react-badge]: https://img.shields.io/badge/React-19-61DAFB.svg?logo=react
+[react-url]: https://react.dev/
+[ts-badge]: https://img.shields.io/badge/TypeScript-5-3178C6.svg?logo=typescript
+[ts-url]: https://www.typescriptlang.org/
