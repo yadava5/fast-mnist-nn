@@ -1,0 +1,114 @@
+# Browser-native inference via WebAssembly
+
+The `fast-mnist-nn` project ships the same C++ classifier to both a
+native HTTP backend **and** to the browser as a WebAssembly module.
+The web demo tries the backend first and falls back to the WASM path
+when the server is unavailable, so the site runs on any static host.
+
+## Artifacts
+
+| File                                     | Size (approx.) | Purpose                                        |
+| ---------------------------------------- | -------------- | ---------------------------------------------- |
+| `web/public/wasm/fast_mnist.js`          | ~50 KB         | Emscripten ES-module glue (factory function).   |
+| `web/public/wasm/fast_mnist.wasm`        | ~80-100 KB     | Compiled `Matrix` + `NeuralNet` + Embind shim. |
+| `web/public/wasm/model.weights.bin`      | ~318 KB raw / ~100 KB gzipped | Binary weights blob (float32).  |
+
+Nothing in `web/public/wasm/` is checked into git — artifacts are
+reproducible via `tools/build_wasm.sh` and the `.github/workflows/
+wasm.yml` workflow uploads them as a CI artifact on every change.
+
+## Building locally
+
+```bash
+# one-time: install emsdk somewhere persistent
+git clone https://github.com/emscripten-core/emsdk.git ~/emsdk
+cd ~/emsdk && ./emsdk install 3.1.64 && ./emsdk activate 3.1.64
+
+# every build session:
+source ~/emsdk/emsdk_env.sh
+
+# produce the native export_weights first (the WASM toolchain can't
+# run it itself)
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --target export_weights
+
+# then build + stage the WASM artifacts
+cd /path/to/fast-mnist-nn
+./tools/build_wasm.sh
+```
+
+The script stages `fast_mnist.{js,wasm}` into `web/public/wasm/`
+and, if it finds a native `build/export_weights`, regenerates
+`web/public/wasm/model.weights.bin` from the current ASCII
+`model.weights` in the repo root.
+
+## File format: `model.weights.bin`
+
+Little-endian binary, produced by `apps/export_weights.cpp`,
+consumed by `NeuralNet::loadBinary` and the Embind `WasmClassifier`:
+
+```
+offset  size    field
+------  ----    -----
+0       4       uint32  magic      = 'FMNN' (0x464D4E4E)
+4       4       uint32  version    = 1
+8       4       uint32  layerCount (e.g. 3 for 784->100->10)
+12      4*L     uint32  layerSizes[layerCount]
+...     4*Nb    float32 biases  : for each layer l>=1, layerSizes[l] values
+...     4*Nw    float32 weights : for each layer l>=1, layerSizes[l] * layerSizes[l-1] values
+```
+
+Weights are stored row-major per layer (each output neuron's
+incoming weights contiguous). The format intentionally uses float32
+even though the internal C++ storage is `double` — the ~1e-7
+round-trip error is well below the precision at which a sigmoid
+MLP's predictions change.
+
+## Platform differences vs native
+
+The same C++ kernels target multiple ISAs via `#if defined(__AVX512F__)`
+/ `__AVX2__` / `__ARM_NEON` / scalar fallback. Under Emscripten none
+of those predicates match; the compiled wasm uses the scalar fallback
+path. To pick up SIMD in the browser we compile with `-msimd128`,
+which gives Emscripten's autovectorizer access to WebAssembly's
+fixed 128-bit SIMD opcodes. Practical implications:
+
+- **Per-instruction width drops from 512 → 128 bits** (AVX-512 vs
+  WASM SIMD) or **256 → 128 bits** (AVX2 vs WASM SIMD). The
+  theoretical throughput ceiling is ~4× or ~2× lower respectively.
+- **No FMA on WASM SIMD** — the v8 engine schedules separate
+  `fmul` / `fadd` sequences internally.
+- **No OpenMP in the browser** — the wasm target forces
+  `FAST_MNIST_ENABLE_OPENMP=OFF`. The 784→100→10 network's forward
+  pass is well below the threshold where OpenMP helped on native
+  anyway, so this is a no-op for the demo.
+
+Latency in practice on a recent laptop: **<5 ms per forward pass**
+cold, ~1-2 ms warm. That's slower than the native SIMD backend but
+imperceptible at the UI level.
+
+## Reference implementations
+
+For prior art and deeper-dive reading on shipping SIMD-aware C++
+to the browser:
+
+- **whisper.cpp wasm** — https://github.com/ggerganov/whisper.cpp
+  demonstrates `-msimd128` with Emscripten for real-time audio.
+- **wllama** — https://github.com/ngxson/wllama ships llama.cpp to
+  the browser with Embind bindings similar to this repo.
+- **tinygrad browser demo** — the TinyJit path proves small MLPs
+  comfortably fit WASM's memory + startup budget.
+
+## Troubleshooting
+
+- **`RuntimeError: table index is out of bounds`** after
+  `loadWeightsFromBinary` — your `model.weights.bin` is stale;
+  regenerate it with the current `export_weights`.
+- **`Cannot find module '/wasm/fast_mnist.js'`** at build time —
+  ensure the dynamic import is laundered through a string variable
+  as done in `web/src/lib/wasmClassifier.ts`; bundler static
+  resolution fails otherwise.
+- **404 on `fast_mnist.wasm`** — the Emscripten factory expects
+  the `.wasm` to live next to the `.js`. The TS wrapper passes a
+  `locateFile` hook that prefixes `/wasm/`; make sure your host
+  serves `web/public/wasm/` at that path.
