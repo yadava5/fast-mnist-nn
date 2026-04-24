@@ -8,6 +8,12 @@
   --color-accent: oklch(0.7 0.22 280);
   --color-accent-2: oklch(0.8 0.15 200);
   --color-border: oklch(0.95 0.005 260 / 0.1);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+.tabular {
+  font-feature-settings: 'tnum' 1;
 }
 
 :root {
