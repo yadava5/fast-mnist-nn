@@ -7,7 +7,7 @@ import { NeuralNetHero } from './components/NeuralNetHero';
 import { HeroBackdrop } from './components/HeroBackdrop';
 import { PipelineCard } from './components/PipelineCard';
 import { CommandPalette } from './components/CommandPalette';
-import { predict, healthCheck } from './api/predict';
+import { predict, healthCheck, type PredictionSource } from './api/predict';
 import { useTheme } from './hooks/useTheme';
 import { useDebouncedCallback } from './hooks/useDebounce';
 import './App.css';
@@ -24,6 +24,7 @@ function App() {
   const [inputGrad, setInputGrad] = useState<number[] | undefined>();
   const [isLoading, setIsLoading] = useState(false);
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [predictionSource, setPredictionSource] = useState<PredictionSource | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -57,6 +58,7 @@ function App() {
       setOptimizedTime(result.optimized_time_ms);
       setHiddenActivations(result.hidden_activations);
       setInputGrad(result.input_grad);
+      setPredictionSource(result.source ?? null);
     } catch (error) {
       if (error instanceof Error && error.name === 'CanceledError') {
         return;
@@ -81,8 +83,18 @@ function App() {
           <span className="status-dot"></span>
           {serverStatus === 'checking' && 'Connecting...'}
           {serverStatus === 'online' && 'Server Online'}
-          {serverStatus === 'offline' && 'Server Offline - Start the backend'}
+          {serverStatus === 'offline' &&
+            predictionSource !== 'browser' &&
+            'Server Offline - falling back to in-browser WASM'}
+          {serverStatus === 'offline' &&
+            predictionSource === 'browser' &&
+            'Running in browser (WASM)'}
         </div>
+        {predictionSource === 'browser' && (
+          <div className="wasm-badge" aria-label="Running in-browser WebAssembly">
+            wasm-mode
+          </div>
+        )}
         <p className="cmdk-hint" aria-hidden>
           <kbd>⌘</kbd>
           <kbd>K</kbd> for commands
@@ -125,7 +137,14 @@ function App() {
           <h2>✏️ Draw Here</h2>
           <DrawingCanvas
             onPredict={handlePredict}
-            disabled={serverStatus !== 'online'}
+            /*
+             * Allow drawing while the server is still being polled
+             * (the request will either succeed or fall through to the
+             * WASM classifier) and when the server is offline (the
+             * fallback handles the request). Only 'checking' locks the
+             * canvas, briefly, during the initial health probe.
+             */
+            disabled={serverStatus === 'checking'}
             isLoading={isLoading}
           />
         </div>
