@@ -149,14 +149,51 @@ if(BUILD_TESTING)
   )
   FetchContent_MakeAvailable(Catch2)
 
+  # rapidcheck: property-based test fuzzer that plugs into Catch2.
+  # No tagged releases upstream, so we pin to a specific commit SHA.
+  #
+  # RC_ENABLE_CATCH is deliberately left OFF: turning it on pulls in
+  # rapidcheck's vendored Catch2 v2.4.2 under ext/catch, which
+  # collides with the Catch2 v3 FetchContent above ("target Catch2
+  # already exists"). The integration header we actually need lives
+  # in extras/catch and is header-only; we add that directory
+  # manually below once rapidcheck is populated so we get the
+  # `rapidcheck_catch` INTERFACE target without the duplicate
+  # Catch2.
+  set(RC_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+  set(RC_ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(RC_ENABLE_CATCH OFF CACHE BOOL "" FORCE)
+  FetchContent_Declare(
+    rapidcheck
+    GIT_REPOSITORY https://github.com/emil-e/rapidcheck.git
+    GIT_TAG b96a4e626ef4c7348dcd16c500353c2f997a9f3f
+  )
+  FetchContent_MakeAvailable(rapidcheck)
+
+  # Manually register the Catch integration (header-only INTERFACE
+  # target). Skip if for any reason a future rapidcheck SHA already
+  # provides the target -- guards against accidental re-inclusion.
+  if(NOT TARGET rapidcheck_catch)
+    add_subdirectory(
+      "${rapidcheck_SOURCE_DIR}/extras/catch"
+      "${rapidcheck_BINARY_DIR}/extras/catch"
+    )
+  endif()
+
   add_executable(fast_mnist_tests
     tests/test_matrix.cpp
+    tests/test_matrix_properties.cpp
     tests/test_neural_net.cpp
   )
   target_link_libraries(fast_mnist_tests
     PRIVATE
       fast_mnist
       Catch2::Catch2WithMain
+      # rapidcheck_catch is INTERFACE and already transitively links
+      # the rapidcheck static lib, so listing it alone is enough.
+      # Adding rapidcheck a second time triggers a linker warning on
+      # macOS ("ignoring duplicate libraries").
+      rapidcheck_catch
   )
 
   include(Catch)
