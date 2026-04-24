@@ -7,6 +7,16 @@ option(FAST_MNIST_ENABLE_NATIVE "Enable -march=native" OFF)
 option(FAST_MNIST_ENABLE_BENCHMARKS "Enable Google Benchmark" OFF)
 option(FAST_MNIST_ENABLE_DOXYGEN "Enable Doxygen docs target" OFF)
 
+# Sanitizer selection. Accepts: OFF, asan, ubsan, asan-ubsan, tsan, msan.
+# Must be a cache STRING (not BOOL) because CMake's `option()` only
+# supports ON/OFF. The flags are applied PUBLIC on the fast_mnist
+# library target so they propagate to every downstream consumer
+# (apps, tests, benchmarks).
+set(FAST_MNIST_ENABLE_SANITIZERS "OFF" CACHE STRING
+    "Enable sanitizers (OFF|asan|ubsan|asan-ubsan|tsan|msan)")
+set_property(CACHE FAST_MNIST_ENABLE_SANITIZERS PROPERTY STRINGS
+    OFF asan ubsan asan-ubsan tsan msan)
+
 add_library(fast_mnist
   src/Matrix.cpp
   src/NeuralNet.cpp
@@ -31,6 +41,48 @@ if(FAST_MNIST_ENABLE_NATIVE)
     message(WARNING "FAST_MNIST_ENABLE_NATIVE is not supported on MSVC")
   else()
     target_compile_options(fast_mnist PRIVATE -march=native)
+  endif()
+endif()
+
+# Sanitizer flag application. PUBLIC so the flags propagate to every
+# target that links fast_mnist -- CLI, trainer, server, tests, and
+# benchmarks. Frame pointers are preserved so symbolicated stack
+# traces are readable, and -O1 is forced to keep inlining shallow
+# enough for useful reports without slowing the build to a crawl.
+if(NOT FAST_MNIST_ENABLE_SANITIZERS STREQUAL "OFF")
+  if(MSVC)
+    message(WARNING "Sanitizers not supported on MSVC; ignoring "
+            "FAST_MNIST_ENABLE_SANITIZERS=${FAST_MNIST_ENABLE_SANITIZERS}")
+  elseif(FAST_MNIST_ENABLE_SANITIZERS STREQUAL "asan-ubsan")
+    target_compile_options(fast_mnist PUBLIC
+      -fsanitize=address,undefined -fno-omit-frame-pointer -O1)
+    target_link_options(fast_mnist PUBLIC
+      -fsanitize=address,undefined)
+  elseif(FAST_MNIST_ENABLE_SANITIZERS STREQUAL "asan")
+    target_compile_options(fast_mnist PUBLIC
+      -fsanitize=address -fno-omit-frame-pointer -O1)
+    target_link_options(fast_mnist PUBLIC -fsanitize=address)
+  elseif(FAST_MNIST_ENABLE_SANITIZERS STREQUAL "ubsan")
+    target_compile_options(fast_mnist PUBLIC
+      -fsanitize=undefined -fno-omit-frame-pointer -O1)
+    target_link_options(fast_mnist PUBLIC -fsanitize=undefined)
+  elseif(FAST_MNIST_ENABLE_SANITIZERS STREQUAL "tsan")
+    target_compile_options(fast_mnist PUBLIC
+      -fsanitize=thread -fno-omit-frame-pointer -O1)
+    target_link_options(fast_mnist PUBLIC -fsanitize=thread)
+  elseif(FAST_MNIST_ENABLE_SANITIZERS STREQUAL "msan")
+    # MSan needs an MSan-instrumented libc++. The CI matrix skips this;
+    # document the manual path instead of wiring it up and failing on
+    # every standard toolchain.
+    message(WARNING
+      "MSan requires an instrumented libc++; skipping automatic setup. "
+      "Build your own libc++ with -fsanitize=memory and pass "
+      "-stdlib=libc++ -L<path-to-libcxx> manually if you need it.")
+  else()
+    message(FATAL_ERROR
+      "Unknown FAST_MNIST_ENABLE_SANITIZERS value: "
+      "'${FAST_MNIST_ENABLE_SANITIZERS}'. "
+      "Expected one of: OFF, asan, ubsan, asan-ubsan, tsan, msan.")
   endif()
 endif()
 
