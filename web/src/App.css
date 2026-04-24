@@ -557,6 +557,85 @@ body {
   }
 }
 
+/* === Sticky-parallax pipeline section === */
+
+.pipeline-section {
+  position: relative;
+  min-height: 250vh;
+  margin: 4rem auto 6rem;
+  max-width: 1200px;
+  width: 100%;
+  padding: 0 1rem;
+}
+
+.pipeline-sticky {
+  position: sticky;
+  top: 15vh;
+  height: 70vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4rem;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.pipeline-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.5rem 1.75rem;
+  border-radius: 16px;
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
+  backdrop-filter: blur(8px);
+  transition: background var(--transition-speed) ease,
+    border-color var(--transition-speed) ease;
+}
+
+.pipeline-step {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.pipeline-title {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin: 0;
+  background: linear-gradient(90deg, var(--text-primary, #fff) 0%, #8b7cff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.pipeline-copy {
+  font-size: clamp(0.95rem, 1.2vw, 1.05rem);
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin: 0;
+  max-width: 52ch;
+}
+
+@media (max-width: 900px) {
+  .pipeline-section {
+    min-height: 220vh;
+    margin: 2rem auto 3rem;
+  }
+
+  .pipeline-sticky {
+    gap: 2.5rem;
+    padding: 0 1rem;
+  }
+}
+
 .cmdk-hint {
   position: absolute;
   top: 1.25rem;
