@@ -250,6 +250,25 @@ body {
   transition: background var(--transition-speed) ease;
 }
 
+/*
+ * Screen-reader-only utility. DrawingCanvas renders an aria-live
+ * region that announces stroke count updates to assistive tech -
+ * we keep it visually hidden but still discoverable by screen
+ * readers. Duplicates Tailwind's `sr-only` so this works even if
+ * the Tailwind build purges the class.
+ */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .prediction-result {
   display: flex;
   flex-direction: column;
