@@ -7,29 +7,52 @@
 
 ---
 
+Hand-rolled C++ neural network that classifies MNIST digits at ~97% accuracy,
+with revolvable 3D architecture visualization and real activation heatmaps that
+run in your browser.
+
 [![ci][ci-badge]][ci-url]
 [![license][license-badge]][license-url]
-[![c++][cpp-badge]][cpp-url]
-[![react][react-badge]][react-url]
-[![typescript][ts-badge]][ts-url]
+[![release][release-badge]][release-url]
+[![try it live][live-badge]][live-url]
+[![openssf scorecard][scorecard-badge]][scorecard-url]
 
-High-performance C++ neural network for MNIST digit recognition with
-SIMD kernels, OpenMP, and reproducible benchmarks. Includes an interactive
-React web app for drawing and classifying digits in real-time.
+## Try it live
 
-## Highlights
+[**fast-mnist-nn-yadava5.vercel.app**][live-url] — draw a digit, see the
+prediction, rotate the network.
 
-- **Interactive Web UI** with live prediction as you draw.
-- Animated neural network visualization showing activations.
-- Dark/light theme toggle with system preference detection.
-- SIMD-accelerated matrix ops (AVX2/AVX-512/NEON) with aligned storage.
-- OpenMP-aware hot paths for dot, transpose, and axpy.
-- P2 PGM parser with in-memory + on-disk cache for repeat runs.
-- CLI training + evaluation pipeline with configurable epochs.
-- Catch2 tests wired to CTest.
-- Google Benchmark suite with published results + charts.
-- Doxygen docs target and clang-format config.
-- CI on Linux/macOS/Windows via GitHub Actions.
+> Hosted demo is a Vercel preview; the `/predict` endpoint falls back to an
+> in-browser WASM build if the C++ server is cold.
+
+## 30-second demo
+
+<!-- demo video is recorded via charm VHS once the hosted demo stabilises -->
+<video src="docs/branding/demo.mp4" width="760" autoplay muted loop playsinline>
+  Hand-drawn "7" classified in real time, with activations flowing through
+  the 784 → 100 → 10 network as the camera revolves around the 3D model.
+</video>
+
+## What it is
+
+A C++17 core library that implements a two-layer multilayer perceptron
+(784 → 100 → 10) from the ground up. Matrix primitives — `dot`, `transpose`,
+`axpy` — are hand-written with AVX-512, AVX2, and NEON intrinsics, with a
+scalar fallback and OpenMP parallelism above empirically-tuned element-count
+thresholds. After ~30 epochs on MNIST the network reaches ~97% test accuracy.
+
+The library ships as three deployables. A CLI (`fast_mnist_cli`) trains and
+evaluates from the terminal. An HTTP server (`fast_mnist_server`, built on
+cpp-httplib + nlohmann/json) exposes `/health` and `/predict`. An Emscripten
+build compiles the same core to WebAssembly with `-msimd128`, so the web app
+has an offline fallback when no server is available.
+
+The frontend is a Vite-bundled React 19 + TypeScript SPA. It uses Motion v12
+for transitions, Tailwind v4 with OKLCH tokens for the design system, and
+`three` + `@react-three/fiber` + `@react-three/drei` for a revolvable 3D
+architecture view. Drawing uses perfect-freehand over an SVG canvas. The
+activation heatmap is real, not decorative — it reads `hidden_activations`
+and `input_grad` from the `/predict` response.
 
 ## Quickstart
 
@@ -37,90 +60,26 @@ React web app for drawing and classifying digits in real-time.
 python3 tools/run.py
 ```
 
-This downloads MNIST, builds the project, and runs a training pass.
-Use `python3 tools/run.py --help` for flags.
+Downloads MNIST, configures a Release build, compiles the C++ core, and runs
+a training pass. `python3 tools/run.py --help` for flags.
 
 ## Benchmarks
 
-Run files:
-- `docs/benchmarks/runs/bench-20251226-154121-baseline.json`
-- `docs/benchmarks/runs/bench-20251226-154121-native.json`
-- `docs/benchmarks/runs/bench-20251226-154121-openmp-native.json`
+Full methodology, reproduction command, and charts live in
+[`BENCHMARKS.md`](BENCHMARKS.md). Teaser, Apple M2 / Apple clang 17 / Release:
 
-Configs:
-- baseline: OpenMP off, native off
-- native: OpenMP off, native on
-- openmp+native: OpenMP on, native on
+| Case           | baseline  | native   | openmp+native |
+| -------------- | --------- | -------- | ------------- |
+| dot 256        | 4,835,360 | 4,759,132 | **1,379,835** |
+| transpose 1024 | 978,383   | 861,078   | **502,426**   |
+| axpy 1024      | 230,626   | 229,230   | **114,910**   |
+| classify       | **81,628 img/s** | 80,712 img/s | 69,994 img/s |
 
-Environment:
-- Apple M2, macOS 15.5
-- Apple clang 17.0.0
-- Release (`-O3`, OpenMP on/off, `-march=native` on/off)
+Matrix ops in ns/op (lower is better); classify in images/second (higher is
+better). OpenMP pays off at 128+ for dot, 512+ for axpy, and hurts on small
+sizes — see `BENCHMARKS.md` for the full story and scaling charts.
 
-Matrix ops (ns/op, lower is better):
-
-| Case | baseline | native | openmp+native |
-| --- | --- | --- | --- |
-| dot 32 | `6165` | `6229` | `6287` |
-| dot 64 | `65252` | `57222` | `89130` |
-| dot 128 | `575281` | `587767` | `374400` |
-| dot 256 | `4835360` | `4759132` | `1379835` |
-| transpose 128 | `5441` | `5292` | `23662` |
-| transpose 256 | `23098` | `22104` | `31108` |
-| transpose 512 | `198735` | `178676` | `87914` |
-| transpose 1024 | `978383` | `861078` | `502426` |
-| axpy 128 | `3486` | `3477` | `23917` |
-| axpy 256 | `13886` | `13896` | `26335` |
-| axpy 512 | `55848` | `55441` | `35846` |
-| axpy 1024 | `230626` | `229230` | `114910` |
-
-Training/inference throughput (img/s, higher is better):
-
-| Case | baseline | native | openmp+native |
-| --- | --- | --- | --- |
-| learn step | `48755` | `49399` | `48636` |
-| classify | `81628` | `80712` | `69994` |
-
-OpenMP overhead shows up on smaller sizes; the line charts illustrate where
-parallelism starts to pay off.
-
-<p align="center">
-  <img src="docs/benchmarks/charts/dot-light.svg#gh-light-mode-only" width="760"
-       alt="Dot scaling">
-  <img src="docs/benchmarks/charts/dot-dark.svg#gh-dark-mode-only" width="760"
-       alt="Dot scaling">
-</p>
-
-<p align="center">
-  <img src="docs/benchmarks/charts/transpose-light.svg#gh-light-mode-only"
-       width="760" alt="Transpose scaling">
-  <img src="docs/benchmarks/charts/transpose-dark.svg#gh-dark-mode-only"
-       width="760" alt="Transpose scaling">
-</p>
-
-<p align="center">
-  <img src="docs/benchmarks/charts/axpy-light.svg#gh-light-mode-only" width="760"
-       alt="Axpy scaling">
-  <img src="docs/benchmarks/charts/axpy-dark.svg#gh-dark-mode-only" width="760"
-       alt="Axpy scaling">
-</p>
-
-<p align="center">
-  <img src="docs/benchmarks/charts/throughput-compare-light.svg#gh-light-mode-only"
-       width="760" alt="Throughput comparison">
-  <img src="docs/benchmarks/charts/throughput-compare-dark.svg#gh-dark-mode-only"
-       width="760" alt="Throughput comparison">
-</p>
-
-See `docs/benchmarks/benchmarks.md` for methodology and scripts.
-
-### Run Benchmarks
-
-```sh
-python3 tools/run_benchmarks.py --openmp --native
-```
-
-## Build and Test
+## Build from source
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -128,88 +87,128 @@ cmake --build build
 ctest --test-dir build
 ```
 
-macOS quickstart:
+macOS one-liner:
 
 ```sh
 ./tools/bootstrap_macos.sh
 ```
 
-## Run
+The build is warning-clean on GCC, Clang, and MSVC. Catch2 tests live under
+`tests/` and run via CTest. `cmake -DFAST_MNIST_ENABLE_DOXYGEN=ON` adds a
+`docs` target.
+
+## Run the CLI
 
 ```sh
 ./build/fast_mnist_cli data 5000 10 TrainingSetList.txt TestingSetList.txt
 ```
 
-## Web Frontend
+Arguments: data directory, training set size, epoch count, training list,
+test list. `fast_mnist_trainer` dumps the resulting `model.weights` to disk.
 
-The project includes an interactive React + TypeScript web app for drawing
-digits and getting real-time predictions.
-
-### Features
-
-- **Live Prediction**: Predictions update as you draw (300ms debounce).
-- **Neural Network Visualization**: Animated particles show activations
-  flowing through the 784 → 100 → 10 network.
-- **Dark/Light Theme**: Toggle with system preference detection and
-  localStorage persistence.
-- **Responsive Design**: Works on desktop and mobile.
-
-### Run the Web App
-
-1. Start the C++ API server:
-   ```sh
-   ./build/fast_mnist_server 8080 model.weights
-   ```
-
-2. In another terminal, start the frontend:
-   ```sh
-   cd web
-   npm install
-   npm run dev
-   ```
-
-3. Open http://localhost:5173 in your browser.
-
-### API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/health` | Health check |
-| POST | `/predict` | Classify digit (accepts `{"pixels": [784 floats]}`) |
-
-## Formatting
+## Run the HTTP server
 
 ```sh
-clang-format -i src/*.cpp include/fast_mnist/*.h apps/*.cpp
+./build/fast_mnist_server 8080 model.weights
 ```
 
-## Documentation
+Exposes:
+
+| Method | Endpoint   | Description                                             |
+| ------ | ---------- | ------------------------------------------------------- |
+| GET    | `/health`  | Liveness probe                                          |
+| POST   | `/predict` | Classify a digit — `{ "pixels": [784 floats in 0..1] }` |
+
+The server returns the predicted label, full softmax distribution, hidden
+activations, and the input-gradient saliency map the frontend uses for
+heatmaps.
+
+## Web app
 
 ```sh
-cmake -S . -B build -DFAST_MNIST_ENABLE_DOXYGEN=ON
-cmake --build build --target docs
+cd web
+npm install
+npm run dev
 ```
 
-## Data
+Opens on `localhost:5173` and talks to `VITE_API_BASE_URL`
+(defaults to `http://localhost:8080`). See [`web/README.md`](web/README.md)
+for Vercel deployment notes.
 
-```sh
-python3 tools/prepare_mnist.py --output data --list-dir .
+## Architecture
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│  C++17 core      Matrix · NeuralNet · SIMD kernels (AVX-512/   │
+│                  AVX2/NEON) · OpenMP · Xavier init · SGD       │
+└────────────────────────────────────────────────────────────────┘
+         │                │                     │
+         ▼                ▼                     ▼
+   fast_mnist_cli   fast_mnist_server     wasm (emscripten,
+   (train/eval)     (cpp-httplib +        -msimd128)
+                    nlohmann/json)             │
+                         │                     │
+                         └──────────┬──────────┘
+                                    ▼
+                      React 19 + Vite + Motion v12 SPA
+                      · perfect-freehand SVG canvas
+                      · r3f + drei 3D viz
+                      · Tailwind v4 OKLCH tokens
 ```
 
-The script auto-installs `tqdm` for progress bars; pass
-`--no-auto-install` to skip that step.
+## Philosophy
+
+**Goals**
+
+- Transparent: every kernel, every parallel threshold, every serialization
+  byte is readable from `src/` in one sitting.
+- Reproducible: Release builds are bit-stable, CI pins compilers, and
+  benchmark JSON is committed.
+- Performant at small scale: a 784 × 100 × 10 network should classify a digit
+  in microseconds, not milliseconds.
+
+**Non-goals**
+
+- Training large models. The net fits in L1. That's the point.
+- Distributed serving. One process, one model, no coordinator.
+- A reusable ML library. `NeuralNet` is hardcoded to two layers by design —
+  see [`docs/adr/0002-two-layer-mlp-not-generic-graph.md`](docs/adr/0002-two-layer-mlp-not-generic-graph.md).
+
+Design trade-offs are documented in [`docs/adr/`](docs/adr/).
+
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the branching model, commit
+convention, and PR template. Security issues: [`SECURITY.md`](SECURITY.md).
+Code of conduct: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+
+## Acknowledgments
+
+- Michael Nielsen, *Neural Networks and Deep Learning* — the reference
+  implementation and pedagogy behind the two-layer MLP.
+- [Shree Chaturvedi](https://github.com/shreebatsa) — frontend contributions
+  and review.
+- [cpp-httplib](https://github.com/yhirose/cpp-httplib),
+  [nlohmann/json](https://github.com/nlohmann/json),
+  [Catch2](https://github.com/catchorg/Catch2),
+  [Google Benchmark](https://github.com/google/benchmark),
+  [perfect-freehand](https://github.com/steveruizok/perfect-freehand),
+  [react-three-fiber](https://github.com/pmndrs/react-three-fiber),
+  [drei](https://github.com/pmndrs/drei),
+  [Motion](https://motion.dev/),
+  [Tailwind CSS](https://tailwindcss.com/).
 
 ## License
 
-MIT -- see `LICENSE`.
+MIT — see [`LICENSE`](LICENSE).
 
 [ci-badge]: https://github.com/yadava5/fast-mnist-nn/actions/workflows/ci.yml/badge.svg
 [ci-url]: https://github.com/yadava5/fast-mnist-nn/actions/workflows/ci.yml
 [license-badge]: https://img.shields.io/badge/license-MIT-blue.svg
 [license-url]: LICENSE
-[cpp-badge]: https://img.shields.io/badge/C%2B%2B-17-blue.svg
-[cpp-url]: https://isocpp.org/
-[react-badge]: https://img.shields.io/badge/React-19-61DAFB.svg?logo=react
-[react-url]: https://react.dev/
-[ts-badge]: https://img.shields.io/badge/TypeScript-5-3178C6.svg?logo=typescript
-[ts-url]: https://www.typescriptlang.org/
+[release-badge]: https://img.shields.io/github/v/release/yadava5/fast-mnist-nn?sort=semver
+[release-url]: https://github.com/yadava5/fast-mnist-nn/releases
+[live-badge]: https://img.shields.io/badge/try%20it-live-brightgreen
+[live-url]: https://fast-mnist-nn-yadava5.vercel.app
+[scorecard-badge]: https://api.securityscorecards.dev/projects/github.com/yadava5/fast-mnist-nn/badge
+[scorecard-url]: https://securityscorecards.dev/viewer/?uri=github.com/yadava5/fast-mnist-nn
