@@ -1,27 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
+import { applyTheme, readInitialTheme, type Theme } from '../lib/theme';
 
-export type Theme = 'dark' | 'light';
+export type { Theme };
 
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>(() => {
-    const stored = localStorage.getItem('theme');
-    if (stored === 'light' || stored === 'dark') {
-      return stored;
-    }
-    // Check system preference
-    if (window.matchMedia('(prefers-color-scheme: light)').matches) {
-      return 'light';
-    }
-    return 'dark';
-  });
+  const [theme, setThemeState] = useState<Theme>(() => readInitialTheme());
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
+    applyTheme(theme);
   }, [theme]);
 
+  const setTheme = useCallback((next: Theme) => {
+    setThemeState(next);
+  }, []);
+
   const toggleTheme = useCallback(() => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'));
   }, []);
 
   return { theme, setTheme, toggleTheme };
