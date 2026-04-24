@@ -49,3 +49,13 @@ test_model
 fast_mnist_cli
 fast_mnist_server
 fast_mnist_trainer
+
+# macOS
+.DS_Store
+
+# Claude Code workspace
+# - .claude/settings.json is tracked (project permission allowlist)
+# - .claude/settings.local.json is machine-specific
+# - .claude/worktrees/ is agent ephemeral
+.claude/settings.local.json
+.claude/worktrees/

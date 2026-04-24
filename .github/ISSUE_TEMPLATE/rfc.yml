@@ -1,0 +1,17 @@
+name: RFC / Architecture Decision
+description: Propose a design change worth a written record (becomes an ADR)
+title: "[rfc] "
+labels: ["type/rfc"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+  - type: textarea
+    id: decision
+    attributes:
+      label: Proposed decision
+  - type: textarea
+    id: consequences
+    attributes:
+      label: Consequences (good and bad)

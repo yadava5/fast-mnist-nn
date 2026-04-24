@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(glab ci get *)",
+      "Bash(glab mr view *)",
+      "Bash(glab ci status *)",
+      "Bash(glab issue view *)",
+      "Bash(glab issue list *)",
+      "Bash(npm run test)",
+      "Bash(npm run lint)",
+      "Bash(glab mr list *)",
+      "Bash(glab ci trace *)",
+      "Bash(glab label list *)",
+      "Bash(glab ci list *)",
+      "Bash(gh run watch *)"
+    ]
+  }
+}
