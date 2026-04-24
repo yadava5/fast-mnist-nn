@@ -123,6 +123,28 @@ class NeuralNet {
                               std::vector<Val>& hiddenActivations) const;
 
     /**
+     * Compute the gradient of the predicted class's output
+     * activation with respect to the input pixels, for saliency
+     * visualization. Uses plain backpropagation through sigmoid
+     * activations. Does NOT modify weights or biases.
+     *
+     * For a 2-layer network the math is:
+     *   a1 = sigmoid(W0 * x + b0),  a2 = sigmoid(W1 * a1 + b1)
+     *   delta2  = e_target * a2 * (1 - a2)   (e_target = one-hot)
+     *   delta1  = (W1^T * delta2) .* a1 * (1 - a1)
+     *   grad_x  = W0^T * delta1
+     *
+     * \param[in] inputs Column-vector of input values.
+     * \param[in] targetClass Output-neuron index whose activation
+     * gradient to take -- typically argmax of the forward pass.
+     * \param[out] grad std::vector<Val> resized to the input
+     * dimension and filled with gradient values.
+     */
+    void computeInputGradient(const Matrix& inputs,
+                              int targetClass,
+                              std::vector<Val>& grad) const;
+
+    /**
      * This method is the top-level training method that processes
      * multiple input images and calling the learn method in this
      * class.
