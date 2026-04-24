@@ -1,0 +1,29 @@
+name: Performance regression
+description: A benchmark got slower or a latency target was missed
+title: "[perf] "
+labels: ["type/perf", "priority/p1"]
+body:
+  - type: dropdown
+    id: kernel
+    attributes:
+      label: Affected kernel
+      options:
+        - matrix.dot
+        - matrix.transpose
+        - matrix.axpy
+        - neuralnet.learn
+        - neuralnet.classify
+        - server.predict_p99
+    validations:
+      required: true
+  - type: textarea
+    id: numbers
+    attributes:
+      label: Before -> After numbers with methodology
+      placeholder: "Include hardware, sample size, median + MAD or p50/p99, and the exact command(s) used."
+    validations:
+      required: true
+  - type: textarea
+    id: bisect
+    attributes:
+      label: Bisect result or suspected commit range
