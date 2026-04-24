@@ -102,6 +102,27 @@ class NeuralNet {
     Matrix classify(const Matrix& inputs) const;
 
     /**
+     * Classify an input and return the hidden-layer activations
+     * alongside the output activations. For a 2-layer network
+     * (input -> hidden -> output), \c hiddenActivations is filled
+     * with the hidden-layer post-sigmoid values.
+     *
+     * Unlike classify(), this method does not use a static scratch
+     * buffer; it allocates per call so it is safe to invoke from
+     * multiple threads (e.g. concurrent HTTP requests).
+     *
+     * \param[in] inputs Column-vector of input values (e.g. 784
+     * pixel values in [0, 1]).
+     * \param[out] hiddenActivations std::vector<Val> that will be
+     * resized to match the hidden layer width and filled with
+     * post-sigmoid activations of the first hidden layer.
+     *
+     * \return Output-layer activations (same shape as classify()).
+     */
+    Matrix classifyWithHidden(const Matrix& inputs,
+                              std::vector<Val>& hiddenActivations) const;
+
+    /**
      * This method is the top-level training method that processes
      * multiple input images and calling the learn method in this
      * class.

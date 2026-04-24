@@ -602,4 +602,33 @@ Matrix NeuralNet::classify(const Matrix& inputs) const {
     return out;
 }
 
+/*
+ * Variant of classify() that also exposes the hidden layer
+ * activations. Allocates its own hidden buffer (no static state) so
+ * that concurrent callers -- e.g. multiple HTTP request threads --
+ * cannot observe each other's intermediate values. The small extra
+ * allocation is negligible on the per-request path, which is never
+ * benchmarked against the hot classify() loop.
+ */
+Matrix NeuralNet::classifyWithHidden(
+    const Matrix& inputs, std::vector<Val>& hiddenActivations) const {
+    // Non-static hidden buffer -- safe across threads.
+    const std::size_t hiddenLen = weights[0].height();
+    Matrix hidden(hiddenLen, 1, Matrix::NoInit{});
+
+    // Forward pass through first (hidden) layer.
+    gemv_rowplusbias_sigmoid(weights[0], biases[0], inputs, hidden);
+
+    // Copy hidden activations out for the caller.
+    hiddenActivations.resize(hiddenLen);
+    for (std::size_t i = 0; i < hiddenLen; ++i) {
+        hiddenActivations[i] = hidden[i][0];
+    }
+
+    // Forward pass through second (output) layer.
+    Matrix out(weights[1].height(), 1, Matrix::NoInit{});
+    gemv_rowplusbias_sigmoid(weights[1], biases[1], hidden, out);
+    return out;
+}
+
 #endif
