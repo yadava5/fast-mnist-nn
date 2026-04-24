@@ -3,6 +3,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <cstring>
 #include <limits>
 #include <numeric>
 #include <random>
@@ -182,8 +184,82 @@ TEST_CASE("classifyWithHidden is deterministic across repeated calls",
 }
 
 // ---------------------------------------------------------------------------
+// Binary weight format (for WASM offline mode)
+// ---------------------------------------------------------------------------
+
+TEST_CASE("loadBinary round-trips a tiny network",
+          "[neural_net][binary_weights]") {
+    NeuralNet src({1, 1});
+    {
+        std::istringstream is(makeTinyNetStream());
+        is >> src;
+    }
+
+    // Manually hand-build the binary payload that export_weights
+    // would produce for this network, mirroring the documented
+    // layout in include/fast_mnist/NeuralNet.h.
+    const std::uint32_t magic = 0x464D4E4Eu;
+    const std::uint32_t version = 1u;
+    const std::uint32_t layerCount = 3u;
+    const std::uint32_t dims[3] = {2u, 3u, 2u};
+
+    std::vector<unsigned char> buf;
+    auto appendU32 = [&](std::uint32_t v) {
+        const unsigned char* p = reinterpret_cast<const unsigned char*>(&v);
+        buf.insert(buf.end(), p, p + 4);
+    };
+    auto appendF32 = [&](float v) {
+        const unsigned char* p = reinterpret_cast<const unsigned char*>(&v);
+        buf.insert(buf.end(), p, p + 4);
+    };
+
+    appendU32(magic);
+    appendU32(version);
+    appendU32(layerCount);
+    for (std::uint32_t d : dims) appendU32(d);
+
+    for (const auto& b : src.getBiases()) {
+        for (std::size_t r = 0; r < b.height(); ++r) {
+            appendF32(static_cast<float>(b[r][0]));
+        }
+    }
+    for (const auto& w : src.getWeights()) {
+        for (std::size_t r = 0; r < w.height(); ++r) {
+            for (std::size_t c = 0; c < w.width(); ++c) {
+                appendF32(static_cast<float>(w[r][c]));
+            }
+        }
+    }
+
+    NeuralNet restored({1, 1});
+    restored.loadBinary(buf.data(), buf.size());
+
+    Matrix input(2, 1, 0.0);
+    input[0][0] = 1.0;
+    input[1][0] = 0.0;
+
+    Matrix outSrc = src.classify(input);
+    Matrix outRestored = restored.classify(input);
+
+    REQUIRE(outRestored.height() == outSrc.height());
+    // Loose tolerance -- double -> float32 -> double round-trip
+    // drops ~7 decimal digits of precision.
+    for (std::size_t i = 0; i < outSrc.height(); ++i) {
+        REQUIRE(outRestored[i][0] ==
+                Catch::Approx(outSrc[i][0]).margin(1e-5));
+    }
+}
+
+TEST_CASE("loadBinary rejects bad magic", "[neural_net][binary_weights]") {
+    NeuralNet net({1, 1});
+    unsigned char bad[12] = {0};
+    REQUIRE_THROWS(net.loadBinary(bad, sizeof(bad)));
+}
+
+// ---------------------------------------------------------------------------
 // Backward pass / saliency
 // ---------------------------------------------------------------------------
+
 TEST_CASE("computeInputGradient returns input-sized saliency",
           "[neural_net][interpretability]") {
     NeuralNet net({1, 1});

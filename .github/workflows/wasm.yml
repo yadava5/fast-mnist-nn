@@ -1,0 +1,84 @@
+name: WASM
+
+# Dedicated workflow for the browser-native inference path. emsdk
+# installs are slow (~2 min) and unnecessary for every push to every
+# branch, so this job is:
+#   * triggered by pushes / PRs that touch the WASM-adjacent sources,
+#   * build-verifying only (no tests yet -- Emscripten unit tests need
+#     a headless JS runner, which is a separate track),
+#   * archiving the resulting .js + .wasm + .bin as a build artifact
+#     so downstream PRs can grab a known-good blob without having to
+#     re-run emsdk locally.
+
+on:
+  push:
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'wasm/**'
+      - 'apps/export_weights.cpp'
+      - 'CMakeLists.txt'
+      - 'tools/build_wasm.sh'
+      - '.github/workflows/wasm.yml'
+      - 'model.weights'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'wasm/**'
+      - 'apps/export_weights.cpp'
+      - 'CMakeLists.txt'
+      - 'tools/build_wasm.sh'
+      - '.github/workflows/wasm.yml'
+      - 'model.weights'
+  workflow_dispatch:
+
+jobs:
+  build-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup emsdk
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.64
+          actions-cache-folder: 'emsdk-cache'
+
+      - name: Configure (Emscripten)
+        run: |
+          emcmake cmake -S . -B build-wasm \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build WASM target
+        run: cmake --build build-wasm -j
+
+      - name: Configure native (for export_weights)
+        run: |
+          cmake -S . -B build-native \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DFAST_MNIST_ENABLE_OPENMP=OFF \
+            -DFAST_MNIST_ENABLE_SERVER=OFF \
+            -DBUILD_TESTING=OFF
+
+      - name: Build native export_weights
+        run: cmake --build build-native --target export_weights -j
+
+      - name: Export binary weights
+        run: ./build-native/export_weights model.weights model.weights.bin
+
+      - name: Stage artifacts
+        run: |
+          mkdir -p dist-wasm
+          cp build-wasm/fast_mnist.js build-wasm/fast_mnist.wasm dist-wasm/
+          cp model.weights.bin dist-wasm/
+          ls -la dist-wasm/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fast_mnist_wasm
+          path: dist-wasm/*
+          if-no-files-found: error
+          retention-days: 14
