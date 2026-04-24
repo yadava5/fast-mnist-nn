@@ -94,3 +94,10 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 300ms;
+  }
+}
