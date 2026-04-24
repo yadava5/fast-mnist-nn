@@ -20,4 +20,4 @@ jobs:
       - name: Lint commits with commitlint
         uses: wagoid/commitlint-github-action@v6
         with:
-          configFile: web/commitlint.config.js
+          configFile: web/commitlint.config.mjs
