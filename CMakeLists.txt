@@ -66,6 +66,11 @@ target_link_libraries(fast_mnist_cli PRIVATE fast_mnist)
 add_executable(fast_mnist_trainer apps/train_model.cpp)
 target_link_libraries(fast_mnist_trainer PRIVATE fast_mnist)
 
+# Binary weight exporter: converts ASCII model.weights -> compact
+# little-endian .bin for loading in the WASM browser path.
+add_executable(export_weights apps/export_weights.cpp)
+target_link_libraries(export_weights PRIVATE fast_mnist)
+
 # Web API Server
 option(FAST_MNIST_ENABLE_SERVER "Enable HTTP API server" ON)
 if(FAST_MNIST_ENABLE_SERVER)

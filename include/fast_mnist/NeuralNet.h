@@ -166,6 +166,22 @@ class NeuralNet {
      */
     const MatrixVec& getBiases() const { return biases; }
 
+    /**
+     * Load a compact binary weight file written by the
+     * \c export_weights utility. The format is documented in
+     * \c apps/export_weights.cpp and prioritizes small download size
+     * over precision: weights and biases are stored as float32.
+     *
+     * On success, \c layerSizes, \c biases, and \c weights are
+     * replaced with the values parsed from \c bytes. If the magic
+     * marker or version is wrong, the method throws \c
+     * std::runtime_error and leaves the object untouched.
+     *
+     * \param[in] bytes Pointer to the start of the binary payload.
+     * \param[in] size Total payload size in bytes.
+     */
+    void loadBinary(const unsigned char* bytes, std::size_t size);
+
   protected:
     /**
      * This is an internal helper method that is used to initializes

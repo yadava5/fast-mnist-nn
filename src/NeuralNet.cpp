@@ -10,9 +10,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <iostream>
 #include <random>
+#include <stdexcept>
 #include <vector>
 
 #include "fast_mnist/NeuralNet.h"
@@ -685,6 +687,118 @@ void NeuralNet::computeInputGradient(const Matrix& inputs, int targetClass,
         }
         grad[k] = sum;
     }
+}
+
+/*
+ * Parse a compact little-endian binary weight buffer into this
+ * NeuralNet. The payload layout must match apps/export_weights.cpp:
+ *
+ *   uint32_t magic        = 'FMNN' (0x4E4E4D46 little-endian)
+ *   uint32_t version      = 1
+ *   uint32_t layerCount
+ *   uint32_t layerSizes[layerCount]
+ *   float32  biases_l0 [layerSizes[1]]
+ *   float32  biases_l1 [layerSizes[2]]
+ *   ...
+ *   float32  weights_l0[layerSizes[1] * layerSizes[0]]
+ *   float32  weights_l1[layerSizes[2] * layerSizes[1]]
+ *   ...
+ *
+ * Weights are stored row-major (each output neuron's incoming
+ * weights contiguous). Conversion to the internal Val (double)
+ * storage happens element-wise on load.
+ */
+void NeuralNet::loadBinary(const unsigned char* bytes, std::size_t size) {
+    constexpr std::uint32_t kMagic = 0x464D4E4Eu;   // 'FMNN'
+    constexpr std::uint32_t kVersion = 1u;
+
+    auto readU32 = [&](std::size_t offset) -> std::uint32_t {
+        if (offset + 4 > size) {
+            throw std::runtime_error("Binary weights: truncated header");
+        }
+        std::uint32_t v;
+        std::memcpy(&v, bytes + offset, sizeof(v));
+        return v;
+    };
+
+    if (size < 12) {
+        throw std::runtime_error("Binary weights: payload too small");
+    }
+    const std::uint32_t magic = readU32(0);
+    const std::uint32_t version = readU32(4);
+    const std::uint32_t layerCount = readU32(8);
+
+    if (magic != kMagic) {
+        throw std::runtime_error("Binary weights: bad magic");
+    }
+    if (version != kVersion) {
+        throw std::runtime_error("Binary weights: unsupported version");
+    }
+    if (layerCount < 2 || layerCount > 64) {
+        throw std::runtime_error("Binary weights: implausible layer count");
+    }
+
+    // Parse layer sizes.
+    std::vector<std::uint32_t> dims(layerCount);
+    std::size_t cursor = 12;
+    for (std::uint32_t i = 0; i < layerCount; ++i) {
+        dims[i] = readU32(cursor);
+        cursor += 4;
+    }
+
+    // Compute expected payload size and validate.
+    std::size_t floatCount = 0;
+    for (std::uint32_t l = 1; l < layerCount; ++l) {
+        floatCount += dims[l];                    // biases
+        floatCount += static_cast<std::size_t>(dims[l]) * dims[l - 1]; // weights
+    }
+    const std::size_t expected = cursor + floatCount * sizeof(float);
+    if (size != expected) {
+        throw std::runtime_error(
+            "Binary weights: size mismatch (got " + std::to_string(size) +
+            ", expected " + std::to_string(expected) + ")");
+    }
+
+    auto readF32 = [&]() -> float {
+        float f;
+        std::memcpy(&f, bytes + cursor, sizeof(f));
+        cursor += sizeof(f);
+        return f;
+    };
+
+    // Rebuild layerSizes matrix (1 row, layerCount cols) to mirror
+    // the ctor/stream path.
+    Matrix newLayerSizes(1, layerCount, 0.0);
+    for (std::uint32_t i = 0; i < layerCount; ++i) {
+        newLayerSizes[0][i] = static_cast<Val>(dims[i]);
+    }
+
+    MatrixVec newBiases;
+    newBiases.reserve(layerCount - 1);
+    for (std::uint32_t l = 1; l < layerCount; ++l) {
+        Matrix b(dims[l], 1, Matrix::NoInit{});
+        for (std::uint32_t r = 0; r < dims[l]; ++r) {
+            b[r][0] = static_cast<Val>(readF32());
+        }
+        newBiases.push_back(std::move(b));
+    }
+
+    MatrixVec newWeights;
+    newWeights.reserve(layerCount - 1);
+    for (std::uint32_t l = 1; l < layerCount; ++l) {
+        Matrix w(dims[l], dims[l - 1], Matrix::NoInit{});
+        for (std::uint32_t r = 0; r < dims[l]; ++r) {
+            for (std::uint32_t c = 0; c < dims[l - 1]; ++c) {
+                w[r][c] = static_cast<Val>(readF32());
+            }
+        }
+        newWeights.push_back(std::move(w));
+    }
+
+    // Commit only after full parse succeeds.
+    layerSizes = std::move(newLayerSizes);
+    biases = std::move(newBiases);
+    weights = std::move(newWeights);
 }
 
 #endif
