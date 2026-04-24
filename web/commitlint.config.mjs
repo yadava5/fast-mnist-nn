@@ -14,9 +14,13 @@ export default {
 
     // Blank-line rules: warn, don't block. Squash merges can collapse
     // the leading blank line between body and footer; not worth failing
-    // the build over.
     'body-leading-blank': [1, 'always'],
     'footer-leading-blank': [1, 'always'],
+
+    // Case rules disabled: we often use acronyms in subjects ("ADR-0001",
+    // "SIMD", "OKLCH", "MLP", "WASM") which config-conventional flags as
+    // pascal/upper-case. Not worth the noise.
+    'subject-case': [0],
 
     // Type must be one of these.
     'type-enum': [
