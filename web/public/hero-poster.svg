@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Neural net hero placeholder">
+  <rect width="400" height="400" fill="oklch(0.16 0.018 260)"/>
+  <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central"
+        fill="oklch(0.7 0.22 280)" font-family="Geist, system-ui, sans-serif"
+        font-size="120" font-weight="500">nn</text>
+</svg>
