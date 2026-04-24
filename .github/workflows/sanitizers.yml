@@ -32,7 +32,12 @@ jobs:
       # Fail the job on the first sanitizer report. Without these the
       # sanitizers only print diagnostics and keep running, which masks
       # failures when ctest's return code comes back 0.
-      ASAN_OPTIONS: halt_on_error=1:abort_on_error=1:detect_leaks=1:strict_string_checks=1:detect_stack_use_after_return=1
+      #
+      # detect_leaks is intentionally NOT set here: LeakSanitizer is
+      # unsupported on macOS and the runtime aborts at startup if
+      # detect_leaks=1 is passed. The per-step ASAN_OPTIONS block
+      # below appends it only on Linux.
+      ASAN_OPTIONS: halt_on_error=1:abort_on_error=1:strict_string_checks=1:detect_stack_use_after_return=1
       UBSAN_OPTIONS: halt_on_error=1:abort_on_error=1:print_stacktrace=1
       TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1:history_size=4
 
@@ -85,4 +90,11 @@ jobs:
         run: cmake --build build-san --target fast_mnist_tests --parallel
 
       - name: Run tests under sanitizer
-        run: ctest --test-dir build-san --output-on-failure
+        run: |
+          # Enable LSan only on Linux; macOS ASan has no LSan runtime
+          # and aborts at startup if detect_leaks=1 is set.
+          if [ "$RUNNER_OS" = "Linux" ] && \
+             [ "${{ matrix.sanitizer }}" != "tsan" ]; then
+            export ASAN_OPTIONS="$ASAN_OPTIONS:detect_leaks=1"
+          fi
+          ctest --test-dir build-san --output-on-failure
