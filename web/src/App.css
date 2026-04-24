@@ -133,6 +133,27 @@ body {
   color: #f44336;
 }
 
+/*
+ * Badge surfaced when the predict() fallback has routed to the
+ * in-browser WASM classifier. Tuned to sit alongside the server-
+ * status chip without shouting, since offline mode is still a
+ * working mode now.
+ */
+.wasm-badge {
+  display: inline-block;
+  margin-top: 0.5rem;
+  margin-left: 0.5rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(102, 126, 234, 0.18);
+  color: #9ea9f5;
+  border: 1px solid rgba(102, 126, 234, 0.4);
+}
+
 .status-dot {
   width: 8px;
   height: 8px;
