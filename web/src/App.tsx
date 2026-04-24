@@ -4,6 +4,7 @@ import { PredictionResult } from './components/PredictionResult';
 import { NeuralNetViz } from './components/NeuralNetViz';
 import { ThemeToggle } from './components/ThemeToggle';
 import { NeuralNetHero } from './components/NeuralNetHero';
+import { HeroBackdrop } from './components/HeroBackdrop';
 import { CommandPalette } from './components/CommandPalette';
 import { predict, healthCheck } from './api/predict';
 import { useTheme } from './hooks/useTheme';
@@ -87,14 +88,17 @@ function App() {
       </header>
 
       <section className="hero-section">
-        <div className="hero-copy">
-          <h2 className="hero-title">784 → 100 → 10</h2>
-          <p className="hero-subtitle">
-            A handwritten C++ multilayer perceptron with SIMD kernels and OpenMP, visualized.
-          </p>
-        </div>
-        <div className="hero-visual">
-          <NeuralNetHero />
+        <HeroBackdrop />
+        <div className="hero-inner">
+          <div className="hero-copy">
+            <h2 className="hero-title">784 → 100 → 10</h2>
+            <p className="hero-subtitle">
+              A handwritten C++ multilayer perceptron with SIMD kernels and OpenMP, visualized.
+            </p>
+          </div>
+          <div className="hero-visual">
+            <NeuralNetHero />
+          </div>
         </div>
       </section>
 
