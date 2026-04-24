@@ -530,55 +530,6 @@ body {
   }
 }
 
-/* Neural Network Visualization */
-.neural-net-viz {
-  background: var(--surface-bg);
-  border-radius: 12px;
-  padding: 1rem;
-  margin-top: 1rem;
-  transition: background var(--transition-speed) ease;
-}
-
-.neural-net-viz h3 {
-  margin-bottom: 0.75rem;
-  font-size: 1rem;
-  color: var(--text-secondary);
-}
-
-.neural-net-canvas {
-  width: 100%;
-  max-width: 400px;
-  height: auto;
-  display: block;
-  margin: 0 auto;
-}
-
-.viz-legend {
-  display: flex;
-  justify-content: center;
-  margin-top: 0.75rem;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--button-secondary-bg);
-}
-
-.legend-dot.active {
-  background: #667eea;
-  box-shadow: 0 0 8px rgba(102, 126, 234, 0.5);
-}
-
 /* === Phase 2: hero section + cmdk hint === */
 
 .hero-section {
