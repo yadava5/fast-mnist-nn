@@ -2,8 +2,10 @@
 export default {
   extends: ['@commitlint/config-conventional'],
   rules: {
-    // Subject: keep the 72-char cap (Linux-kernel convention, good for git log).
-    'header-max-length': [2, 'always', 72],
+    // Subject: cap at 80 to leave room for GitHub's auto-appended " (#N)"
+    // suffix on squash merges. Hand-written subjects still target ~66 chars
+    // to stay comfortably under the cap after squashing.
+    'header-max-length': [2, 'always', 80],
 
     // Disable body/footer line caps — we write long URLs in VALIDATION
     // sections and the default 100-char limit fails on real URLs.
