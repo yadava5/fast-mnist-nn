@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DrawingCanvas } from './components/DrawingCanvas';
 import { PredictionResult } from './components/PredictionResult';
 import { NeuralNetViz } from './components/NeuralNetViz';
 import { ThemeToggle } from './components/ThemeToggle';
+import { NeuralNetHero } from './components/NeuralNetHero';
+import { CommandPalette } from './components/CommandPalette';
 import { predict, healthCheck } from './api/predict';
 import { useTheme } from './hooks/useTheme';
 import { useDebouncedCallback } from './hooks/useDebounce';
@@ -19,7 +21,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
-  
+
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -37,17 +39,14 @@ function App() {
   }, []);
 
   const performPrediction = useCallback(async (pixels: number[]) => {
-    // Cancel any pending request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-    
-    // Create new AbortController for this request
     abortControllerRef.current = new AbortController();
-    
+
     setIsLoading(true);
     setIsAnimating(true);
-    
+
     try {
       const result = await predict(pixels, abortControllerRef.current.signal);
       setPrediction(result.prediction);
@@ -55,23 +54,17 @@ function App() {
       setBaselineTime(result.baseline_time_ms);
       setOptimizedTime(result.optimized_time_ms);
     } catch (error) {
-      // Don't log abort errors - they're intentional
       if (error instanceof Error && error.name === 'CanceledError') {
         return;
       }
       console.error('Prediction failed:', error);
     } finally {
       setIsLoading(false);
-      // Keep animation running a bit longer for effect
       setTimeout(() => setIsAnimating(false), 300);
     }
   }, []);
 
-  // Debounced prediction handler (300ms delay)
-  const { debouncedFn: handlePredict } = useDebouncedCallback(
-    performPrediction,
-    300
-  );
+  const { debouncedFn: handlePredict } = useDebouncedCallback(performPrediction, 300);
 
   return (
     <div className="app">
@@ -87,12 +80,28 @@ function App() {
           {serverStatus === 'online' && 'Server Online'}
           {serverStatus === 'offline' && 'Server Offline - Start the backend'}
         </div>
+        <p className="cmdk-hint" aria-hidden>
+          <kbd>⌘</kbd>
+          <kbd>K</kbd> for commands
+        </p>
       </header>
+
+      <section className="hero-section">
+        <div className="hero-copy">
+          <h2 className="hero-title">784 → 100 → 10</h2>
+          <p className="hero-subtitle">
+            A handwritten C++ multilayer perceptron with SIMD kernels and OpenMP, visualized.
+          </p>
+        </div>
+        <div className="hero-visual">
+          <NeuralNetHero />
+        </div>
+      </section>
 
       <main className="main-content">
         <div className="canvas-section">
           <h2>✏️ Draw Here</h2>
-          <DrawingCanvas 
+          <DrawingCanvas
             onPredict={handlePredict}
             disabled={serverStatus !== 'online'}
             isLoading={isLoading}
@@ -117,13 +126,11 @@ function App() {
       </main>
 
       <footer className="footer">
-        <p>
-          Built with C++ • SIMD Optimizations • OpenMP Parallelization
-        </p>
-        <p className="author">
-          By Ayush Yadav • Contributor: Shree Chaturvedi
-        </p>
+        <p>Built with C++ · SIMD kernels · OpenMP · Motion · React Three Fiber</p>
+        <p className="author">By Ayush Yadav · Contributor: Shree Chaturvedi</p>
       </footer>
+
+      <CommandPalette />
     </div>
   );
 }
