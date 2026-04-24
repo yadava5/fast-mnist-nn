@@ -1,0 +1,100 @@
+name: Sanitizers
+
+on:
+  push:
+    branches: [main, optimization]
+  pull_request:
+
+# Kill in-flight sanitizer jobs from the same ref when a new push lands.
+# A full asan+ubsan+tsan sweep takes ~8 min per cell; two concurrent runs
+# for the same PR is pure CI burn.
+concurrency:
+  group: sanitizers-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sanitize:
+    name: ${{ matrix.os }} / ${{ matrix.compiler }} / ${{ matrix.sanitizer }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        sanitizer: [asan-ubsan, tsan]
+        compiler: [clang, gcc]
+        exclude:
+          # Apple "gcc" is a clang shim; running the same clang path twice
+          # adds noise without catching new bugs.
+          - os: macos-latest
+            compiler: gcc
+
+    env:
+      # Fail the job on the first sanitizer report. Without these the
+      # sanitizers only print diagnostics and keep running, which masks
+      # failures when ctest's return code comes back 0.
+      #
+      # detect_leaks is intentionally NOT set here: LeakSanitizer is
+      # unsupported on macOS and the runtime aborts at startup if
+      # detect_leaks=1 is passed. The per-step ASAN_OPTIONS block
+      # below appends it only on Linux.
+      ASAN_OPTIONS: halt_on_error=1:abort_on_error=1:strict_string_checks=1:detect_stack_use_after_return=1
+      UBSAN_OPTIONS: halt_on_error=1:abort_on_error=1:print_stacktrace=1
+      TSAN_OPTIONS: halt_on_error=1:second_deadlock_stack=1:history_size=4
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install OpenMP (macOS)
+        if: runner.os == 'macOS'
+        run: brew install libomp
+
+      - name: Select compiler (Linux + gcc)
+        if: runner.os == 'Linux' && matrix.compiler == 'gcc'
+        run: |
+          echo "CC=gcc" >> "$GITHUB_ENV"
+          echo "CXX=g++" >> "$GITHUB_ENV"
+
+      - name: Select compiler (Linux + clang)
+        if: runner.os == 'Linux' && matrix.compiler == 'clang'
+        run: |
+          echo "CC=clang" >> "$GITHUB_ENV"
+          echo "CXX=clang++" >> "$GITHUB_ENV"
+
+      - name: Select compiler (macOS + clang)
+        if: runner.os == 'macOS' && matrix.compiler == 'clang'
+        run: |
+          echo "CC=clang" >> "$GITHUB_ENV"
+          echo "CXX=clang++" >> "$GITHUB_ENV"
+
+      - name: Configure
+        run: |
+          # OpenMP is disabled under TSan: the TSan runtime and the
+          # OpenMP runtime both install signal handlers and disagree on
+          # thread synchronisation primitives, producing spurious races
+          # that say nothing about our code. ASan+UBSan do cope with
+          # OpenMP, so we leave it on there.
+          if [ "${{ matrix.sanitizer }}" = "tsan" ]; then
+            OMP_FLAG=-DFAST_MNIST_ENABLE_OPENMP=OFF
+          else
+            OMP_FLAG=-DFAST_MNIST_ENABLE_OPENMP=ON
+          fi
+          cmake -S . -B build-san \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DBUILD_TESTING=ON \
+            -DFAST_MNIST_ENABLE_SANITIZERS=${{ matrix.sanitizer }} \
+            -DFAST_MNIST_ENABLE_NATIVE=OFF \
+            $OMP_FLAG
+
+      - name: Build tests
+        run: cmake --build build-san --target fast_mnist_tests --parallel
+
+      - name: Run tests under sanitizer
+        run: |
+          # Enable LSan only on Linux; macOS ASan has no LSan runtime
+          # and aborts at startup if detect_leaks=1 is set.
+          if [ "$RUNNER_OS" = "Linux" ] && \
+             [ "${{ matrix.sanitizer }}" != "tsan" ]; then
+            export ASAN_OPTIONS="$ASAN_OPTIONS:detect_leaks=1"
+          fi
+          ctest --test-dir build-san --output-on-failure

@@ -7,6 +7,16 @@ option(FAST_MNIST_ENABLE_NATIVE "Enable -march=native" OFF)
 option(FAST_MNIST_ENABLE_BENCHMARKS "Enable Google Benchmark" OFF)
 option(FAST_MNIST_ENABLE_DOXYGEN "Enable Doxygen docs target" OFF)
 
+# Sanitizer selection. Accepts: OFF, asan, ubsan, asan-ubsan, tsan, msan.
+# Must be a cache STRING (not BOOL) because CMake's `option()` only
+# supports ON/OFF. The flags are applied PUBLIC on the fast_mnist
+# library target so they propagate to every downstream consumer
+# (apps, tests, benchmarks).
+set(FAST_MNIST_ENABLE_SANITIZERS "OFF" CACHE STRING
+    "Enable sanitizers (OFF|asan|ubsan|asan-ubsan|tsan|msan)")
+set_property(CACHE FAST_MNIST_ENABLE_SANITIZERS PROPERTY STRINGS
+    OFF asan ubsan asan-ubsan tsan msan)
+
 # When configured with emcmake (toolchain = Emscripten.cmake), skip
 # the native executables, OpenMP search, and test harness. The WASM
 # target lives at the bottom of this file and is the only thing
@@ -15,6 +25,7 @@ if(EMSCRIPTEN)
   set(FAST_MNIST_ENABLE_OPENMP OFF CACHE BOOL "" FORCE)
   set(FAST_MNIST_ENABLE_SERVER OFF CACHE BOOL "" FORCE)
   set(FAST_MNIST_ENABLE_BENCHMARKS OFF CACHE BOOL "" FORCE)
+  set(FAST_MNIST_ENABLE_SANITIZERS "OFF" CACHE STRING "" FORCE)
   # Emscripten has no std::filesystem threads model; disable the
   # test / benchmark / CLI targets and just build the library plus
   # the Embind shim.
@@ -45,6 +56,48 @@ if(FAST_MNIST_ENABLE_NATIVE)
     message(WARNING "FAST_MNIST_ENABLE_NATIVE is not supported on MSVC")
   else()
     target_compile_options(fast_mnist PRIVATE -march=native)
+  endif()
+endif()
+
+# Sanitizer flag application. PUBLIC so the flags propagate to every
+# target that links fast_mnist -- CLI, trainer, server, tests, and
+# benchmarks. Frame pointers are preserved so symbolicated stack
+# traces are readable, and -O1 is forced to keep inlining shallow
+# enough for useful reports without slowing the build to a crawl.
+if(NOT FAST_MNIST_ENABLE_SANITIZERS STREQUAL "OFF")
+  if(MSVC)
+    message(WARNING "Sanitizers not supported on MSVC; ignoring "
+            "FAST_MNIST_ENABLE_SANITIZERS=${FAST_MNIST_ENABLE_SANITIZERS}")
+  elseif(FAST_MNIST_ENABLE_SANITIZERS STREQUAL "asan-ubsan")
+    target_compile_options(fast_mnist PUBLIC
+      -fsanitize=address,undefined -fno-omit-frame-pointer -O1)
+    target_link_options(fast_mnist PUBLIC
+      -fsanitize=address,undefined)
+  elseif(FAST_MNIST_ENABLE_SANITIZERS STREQUAL "asan")
+    target_compile_options(fast_mnist PUBLIC
+      -fsanitize=address -fno-omit-frame-pointer -O1)
+    target_link_options(fast_mnist PUBLIC -fsanitize=address)
+  elseif(FAST_MNIST_ENABLE_SANITIZERS STREQUAL "ubsan")
+    target_compile_options(fast_mnist PUBLIC
+      -fsanitize=undefined -fno-omit-frame-pointer -O1)
+    target_link_options(fast_mnist PUBLIC -fsanitize=undefined)
+  elseif(FAST_MNIST_ENABLE_SANITIZERS STREQUAL "tsan")
+    target_compile_options(fast_mnist PUBLIC
+      -fsanitize=thread -fno-omit-frame-pointer -O1)
+    target_link_options(fast_mnist PUBLIC -fsanitize=thread)
+  elseif(FAST_MNIST_ENABLE_SANITIZERS STREQUAL "msan")
+    # MSan needs an MSan-instrumented libc++. The CI matrix skips this;
+    # document the manual path instead of wiring it up and failing on
+    # every standard toolchain.
+    message(WARNING
+      "MSan requires an instrumented libc++; skipping automatic setup. "
+      "Build your own libc++ with -fsanitize=memory and pass "
+      "-stdlib=libc++ -L<path-to-libcxx> manually if you need it.")
+  else()
+    message(FATAL_ERROR
+      "Unknown FAST_MNIST_ENABLE_SANITIZERS value: "
+      "'${FAST_MNIST_ENABLE_SANITIZERS}'. "
+      "Expected one of: OFF, asan, ubsan, asan-ubsan, tsan, msan.")
   endif()
 endif()
 
@@ -118,14 +171,51 @@ if(BUILD_TESTING)
   )
   FetchContent_MakeAvailable(Catch2)
 
+  # rapidcheck: property-based test fuzzer that plugs into Catch2.
+  # No tagged releases upstream, so we pin to a specific commit SHA.
+  #
+  # RC_ENABLE_CATCH is deliberately left OFF: turning it on pulls in
+  # rapidcheck's vendored Catch2 v2.4.2 under ext/catch, which
+  # collides with the Catch2 v3 FetchContent above ("target Catch2
+  # already exists"). The integration header we actually need lives
+  # in extras/catch and is header-only; we add that directory
+  # manually below once rapidcheck is populated so we get the
+  # `rapidcheck_catch` INTERFACE target without the duplicate
+  # Catch2.
+  set(RC_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+  set(RC_ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(RC_ENABLE_CATCH OFF CACHE BOOL "" FORCE)
+  FetchContent_Declare(
+    rapidcheck
+    GIT_REPOSITORY https://github.com/emil-e/rapidcheck.git
+    GIT_TAG b96a4e626ef4c7348dcd16c500353c2f997a9f3f
+  )
+  FetchContent_MakeAvailable(rapidcheck)
+
+  # Manually register the Catch integration (header-only INTERFACE
+  # target). Skip if for any reason a future rapidcheck SHA already
+  # provides the target -- guards against accidental re-inclusion.
+  if(NOT TARGET rapidcheck_catch)
+    add_subdirectory(
+      "${rapidcheck_SOURCE_DIR}/extras/catch"
+      "${rapidcheck_BINARY_DIR}/extras/catch"
+    )
+  endif()
+
   add_executable(fast_mnist_tests
     tests/test_matrix.cpp
+    tests/test_matrix_properties.cpp
     tests/test_neural_net.cpp
   )
   target_link_libraries(fast_mnist_tests
     PRIVATE
       fast_mnist
       Catch2::Catch2WithMain
+      # rapidcheck_catch is INTERFACE and already transitively links
+      # the rapidcheck static lib, so listing it alone is enough.
+      # Adding rapidcheck a second time triggers a linker warning on
+      # macOS ("ignoring duplicate libraries").
+      rapidcheck_catch
   )
 
   include(Catch)
