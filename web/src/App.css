@@ -19,7 +19,7 @@
   --transition-speed: 0.3s;
 }
 
-[data-theme="light"] {
+[data-theme='light'] {
   --bg-gradient-start: #f5f7fa;
   --bg-gradient-end: #e4e8f0;
   --text-primary: #1a1a2e;
@@ -44,12 +44,14 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-    Ubuntu, Cantarell, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
   min-height: 100vh;
   color: var(--text-primary);
-  transition: background var(--transition-speed) ease, color var(--transition-speed) ease;
+  transition:
+    background var(--transition-speed) ease,
+    color var(--transition-speed) ease;
 }
 
 .app {
@@ -140,8 +142,13 @@ body {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .main-content {
@@ -183,7 +190,9 @@ body {
   background: var(--canvas-bg);
   max-width: 100%;
   height: auto;
-  transition: background var(--transition-speed) ease, border-color var(--transition-speed) ease;
+  transition:
+    background var(--transition-speed) ease,
+    border-color var(--transition-speed) ease;
 }
 
 .drawing-canvas-container {
@@ -226,7 +235,9 @@ body {
   border-radius: 8px;
   font-size: 1rem;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .canvas-buttons button:hover:not(:disabled) {
@@ -326,7 +337,9 @@ body {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .timing-comparison,
@@ -431,53 +444,90 @@ body {
   font-size: 0.9rem;
 }
 
-/* Neural Network Visualization */
-.neural-net-viz {
-  background: var(--surface-bg);
-  border-radius: 12px;
-  padding: 1rem;
+/* Activation panels (saliency / hidden / softmax) */
+.activation-panels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
   margin-top: 1rem;
-  transition: background var(--transition-speed) ease;
 }
 
-.neural-net-viz h3 {
-  margin-bottom: 0.75rem;
-  font-size: 1rem;
-  color: var(--text-secondary);
+.activation-panel {
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition:
+    background var(--transition-speed) ease,
+    border-color var(--transition-speed) ease;
 }
 
-.neural-net-canvas {
+.activation-panel-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.activation-canvas {
   width: 100%;
-  max-width: 400px;
-  height: auto;
+  aspect-ratio: 1;
   display: block;
-  margin: 0 auto;
+  border-radius: 8px;
+  background: var(--canvas-bg);
+  image-rendering: pixelated;
 }
 
-.viz-legend {
+.softmax-bars {
   display: flex;
-  justify-content: center;
-  margin-top: 0.75rem;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
-.legend-item {
-  display: flex;
+.softmax-row {
+  display: grid;
+  grid-template-columns: 1.2rem 1fr 2.2rem;
   align-items: center;
   gap: 0.5rem;
 }
 
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--button-secondary-bg);
+.softmax-digit {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  text-align: center;
 }
 
-.legend-dot.active {
-  background: #667eea;
-  box-shadow: 0 0 8px rgba(102, 126, 234, 0.5);
+.softmax-track {
+  height: 0.6rem;
+  background: var(--bar-bg);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.softmax-fill {
+  height: 100%;
+  border-radius: 4px;
+  transform-origin: left center;
+  will-change: width, transform;
+}
+
+.softmax-pct {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .activation-panels {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* === Phase 2: hero section + cmdk hint === */
@@ -609,7 +659,8 @@ body {
   background: var(--surface-bg);
   border: 1px solid var(--surface-border);
   backdrop-filter: blur(8px);
-  transition: background var(--transition-speed) ease,
+  transition:
+    background var(--transition-speed) ease,
     border-color var(--transition-speed) ease;
 }
 

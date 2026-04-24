@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DrawingCanvas } from './components/DrawingCanvas';
 import { PredictionResult } from './components/PredictionResult';
-import { NeuralNetViz } from './components/NeuralNetViz';
+import { ActivationPanels } from './components/ActivationPanels';
 import { ThemeToggle } from './components/ThemeToggle';
 import { NeuralNetHero } from './components/NeuralNetHero';
 import { HeroBackdrop } from './components/HeroBackdrop';
@@ -20,8 +20,9 @@ function App() {
   const [confidence, setConfidence] = useState<number[]>([]);
   const [baselineTime, setBaselineTime] = useState<number | null>(null);
   const [optimizedTime, setOptimizedTime] = useState<number | null>(null);
+  const [hiddenActivations, setHiddenActivations] = useState<number[] | undefined>();
+  const [inputGrad, setInputGrad] = useState<number[] | undefined>();
   const [isLoading, setIsLoading] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -47,7 +48,6 @@ function App() {
     abortControllerRef.current = new AbortController();
 
     setIsLoading(true);
-    setIsAnimating(true);
 
     try {
       const result = await predict(pixels, abortControllerRef.current.signal);
@@ -55,6 +55,8 @@ function App() {
       setConfidence(result.confidence);
       setBaselineTime(result.baseline_time_ms);
       setOptimizedTime(result.optimized_time_ms);
+      setHiddenActivations(result.hidden_activations);
+      setInputGrad(result.input_grad);
     } catch (error) {
       if (error instanceof Error && error.name === 'CanceledError') {
         return;
@@ -62,7 +64,6 @@ function App() {
       console.error('Prediction failed:', error);
     } finally {
       setIsLoading(false);
-      setTimeout(() => setIsAnimating(false), 300);
     }
   }, []);
 
@@ -105,11 +106,7 @@ function App() {
 
       <section className="pipeline-section">
         <div className="pipeline-sticky">
-          <PipelineCard
-            step="01"
-            title="You draw."
-            copy="28×28 canvas, pixel values in [0, 1]."
-          />
+          <PipelineCard step="01" title="You draw." copy="28×28 canvas, pixel values in [0, 1]." />
           <PipelineCard
             step="02"
             title="C++ classifies."
@@ -142,10 +139,11 @@ function App() {
             optimizedTime={optimizedTime}
             isLoading={isLoading}
           />
-          <NeuralNetViz
-            confidence={confidence}
+          <ActivationPanels
             prediction={prediction}
-            isAnimating={isAnimating}
+            confidence={confidence}
+            hiddenActivations={hiddenActivations}
+            inputGrad={inputGrad}
           />
         </div>
       </main>
