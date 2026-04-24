@@ -3,6 +3,7 @@ build/
 build-test/
 build-bench/
 build-omp/
+build-wasm/
 cmake-build-*/
 CMakeFiles/
 CMakeCache.txt
