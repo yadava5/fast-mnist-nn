@@ -187,15 +187,16 @@ if(EMSCRIPTEN)
   target_compile_options(fast_mnist_wasm PRIVATE
     -O3
     -msimd128
-    -fno-exceptions
-    # RTTI stays on (required by Embind).
+    # Exceptions + RTTI stay on: Matrix throws std::bad_alloc and
+    # NeuralNet::loadBinary throws std::runtime_error on malformed
+    # payloads, both of which are valid ways to signal failure back
+    # to JS. Embind also relies on RTTI for dynamic_cast.
   )
   # Embind hooks via --bind; module wrapping + memory growth so the
   # browser can ask for more heap if a future model outgrows 16 MB.
   target_link_options(fast_mnist_wasm PRIVATE
     --bind
     -O3
-    -fno-exceptions
     -sMODULARIZE=1
     -sEXPORT_NAME=createFastMnist
     -sENVIRONMENT=web
