@@ -233,14 +233,26 @@ int main(int argc, char* argv[]) {
             for (int i = 0; i < 10; ++i) {
                 confidence[i] /= sum;
             }
-            
+
+            // Per-request interpretability: hidden activations +
+            // input-pixel saliency for the predicted class. These
+            // run ONCE (not in the timing loop) so they do not
+            // pollute baseline_time_ms / optimized_time_ms.
+            std::vector<double> hiddenActivations;
+            g_network.classifyWithHidden(input, hiddenActivations);
+
+            std::vector<double> inputGrad;
+            g_network.computeInputGradient(input, prediction, inputGrad);
+
             json response = {
                 {"prediction", prediction},
                 {"confidence", confidence},
                 {"baseline_time_ms", baselineTime},
-                {"optimized_time_ms", optimizedTime}
+                {"optimized_time_ms", optimizedTime},
+                {"hidden_activations", hiddenActivations},
+                {"input_grad", inputGrad}
             };
-            
+
             res.set_content(response.dump(), "application/json");
             
         } catch (const json::parse_error& e) {

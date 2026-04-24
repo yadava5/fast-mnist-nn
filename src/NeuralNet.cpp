@@ -602,4 +602,89 @@ Matrix NeuralNet::classify(const Matrix& inputs) const {
     return out;
 }
 
+/*
+ * Variant of classify() that also exposes the hidden layer
+ * activations. Allocates its own hidden buffer (no static state) so
+ * that concurrent callers -- e.g. multiple HTTP request threads --
+ * cannot observe each other's intermediate values. The small extra
+ * allocation is negligible on the per-request path, which is never
+ * benchmarked against the hot classify() loop.
+ */
+Matrix NeuralNet::classifyWithHidden(
+    const Matrix& inputs, std::vector<Val>& hiddenActivations) const {
+    // Non-static hidden buffer -- safe across threads.
+    const std::size_t hiddenLen = weights[0].height();
+    Matrix hidden(hiddenLen, 1, Matrix::NoInit{});
+
+    // Forward pass through first (hidden) layer.
+    gemv_rowplusbias_sigmoid(weights[0], biases[0], inputs, hidden);
+
+    // Copy hidden activations out for the caller.
+    hiddenActivations.resize(hiddenLen);
+    for (std::size_t i = 0; i < hiddenLen; ++i) {
+        hiddenActivations[i] = hidden[i][0];
+    }
+
+    // Forward pass through second (output) layer.
+    Matrix out(weights[1].height(), 1, Matrix::NoInit{});
+    gemv_rowplusbias_sigmoid(weights[1], biases[1], hidden, out);
+    return out;
+}
+
+/*
+ * Compute d a2[targetClass] / d x using plain backpropagation
+ * through sigmoid activations. Follows the Nielsen formulation with
+ * the cost gradient replaced by a one-hot selector e_target, so the
+ * result is the gradient of the chosen output neuron's activation
+ * w.r.t. the raw input pixels -- the standard saliency map.
+ *
+ * Implementation uses plain nested loops; correctness and
+ * readability are prioritized over throughput since this runs once
+ * per HTTP request, not inside the inner training loop.
+ */
+void NeuralNet::computeInputGradient(const Matrix& inputs, int targetClass,
+                                     std::vector<Val>& grad) const {
+    // Forward pass -- recompute a1 (hidden) and a2 (output).
+    const std::size_t inputLen = weights[0].width();
+    const std::size_t hiddenLen = weights[0].height();
+    const std::size_t outputLen = weights[1].height();
+
+    Matrix a1(hiddenLen, 1, Matrix::NoInit{});
+    gemv_rowplusbias_sigmoid(weights[0], biases[0], inputs, a1);
+
+    Matrix a2(outputLen, 1, Matrix::NoInit{});
+    gemv_rowplusbias_sigmoid(weights[1], biases[1], a1, a2);
+
+    // delta2 = e_target .* a2 .* (1 - a2). Only the targetClass
+    // entry is non-zero since e_target is a one-hot vector.
+    std::vector<Val> delta2(outputLen, 0.0);
+    if (targetClass >= 0 &&
+        static_cast<std::size_t>(targetClass) < outputLen) {
+        const Val aT = a2[targetClass][0];
+        delta2[targetClass] = aT * (1.0 - aT);
+    }
+
+    // delta1 = (W1^T * delta2) .* a1 .* (1 - a1).
+    std::vector<Val> delta1(hiddenLen, 0.0);
+    for (std::size_t j = 0; j < hiddenLen; ++j) {
+        Val sum = 0.0;
+        for (std::size_t i = 0; i < outputLen; ++i) {
+            sum += weights[1][i][j] * delta2[i];
+        }
+        const Val aj = a1[j][0];
+        delta1[j] = sum * aj * (1.0 - aj);
+    }
+
+    // grad_input = W0^T * delta1. Input is raw pixels with no
+    // preceding sigmoid, so no derivative factor is applied here.
+    grad.assign(inputLen, 0.0);
+    for (std::size_t k = 0; k < inputLen; ++k) {
+        Val sum = 0.0;
+        for (std::size_t j = 0; j < hiddenLen; ++j) {
+            sum += weights[0][j][k] * delta1[j];
+        }
+        grad[k] = sum;
+    }
+}
+
 #endif
