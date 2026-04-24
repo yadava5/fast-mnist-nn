@@ -19,7 +19,7 @@
   --transition-speed: 0.3s;
 }
 
-[data-theme="light"] {
+[data-theme='light'] {
   --bg-gradient-start: #f5f7fa;
   --bg-gradient-end: #e4e8f0;
   --text-primary: #1a1a2e;
@@ -44,12 +44,14 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-    Ubuntu, Cantarell, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
   min-height: 100vh;
   color: var(--text-primary);
-  transition: background var(--transition-speed) ease, color var(--transition-speed) ease;
+  transition:
+    background var(--transition-speed) ease,
+    color var(--transition-speed) ease;
 }
 
 .app {
@@ -140,8 +142,13 @@ body {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .main-content {
@@ -183,7 +190,9 @@ body {
   background: var(--canvas-bg);
   max-width: 100%;
   height: auto;
-  transition: background var(--transition-speed) ease, border-color var(--transition-speed) ease;
+  transition:
+    background var(--transition-speed) ease,
+    border-color var(--transition-speed) ease;
 }
 
 .drawing-canvas-container {
@@ -226,7 +235,9 @@ body {
   border-radius: 8px;
   font-size: 1rem;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .canvas-buttons button:hover:not(:disabled) {
@@ -248,6 +259,25 @@ body {
   background: var(--button-secondary-bg);
   color: var(--button-secondary-text);
   transition: background var(--transition-speed) ease;
+}
+
+/*
+ * Screen-reader-only utility. DrawingCanvas renders an aria-live
+ * region that announces stroke count updates to assistive tech -
+ * we keep it visually hidden but still discoverable by screen
+ * readers. Duplicates Tailwind's `sr-only` so this works even if
+ * the Tailwind build purges the class.
+ */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .prediction-result {
@@ -307,7 +337,9 @@ body {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .timing-comparison,
@@ -412,65 +444,126 @@ body {
   font-size: 0.9rem;
 }
 
-/* Neural Network Visualization */
-.neural-net-viz {
-  background: var(--surface-bg);
-  border-radius: 12px;
-  padding: 1rem;
+/* Activation panels (saliency / hidden / softmax) */
+.activation-panels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
   margin-top: 1rem;
-  transition: background var(--transition-speed) ease;
 }
 
-.neural-net-viz h3 {
-  margin-bottom: 0.75rem;
-  font-size: 1rem;
-  color: var(--text-secondary);
+.activation-panel {
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition:
+    background var(--transition-speed) ease,
+    border-color var(--transition-speed) ease;
 }
 
-.neural-net-canvas {
+.activation-panel-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.activation-canvas {
   width: 100%;
-  max-width: 400px;
-  height: auto;
+  aspect-ratio: 1;
   display: block;
-  margin: 0 auto;
+  border-radius: 8px;
+  background: var(--canvas-bg);
+  image-rendering: pixelated;
 }
 
-.viz-legend {
+.softmax-bars {
   display: flex;
-  justify-content: center;
-  margin-top: 0.75rem;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
-.legend-item {
-  display: flex;
+.softmax-row {
+  display: grid;
+  grid-template-columns: 1.2rem 1fr 2.2rem;
   align-items: center;
   gap: 0.5rem;
 }
 
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--button-secondary-bg);
+.softmax-digit {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  text-align: center;
 }
 
-.legend-dot.active {
-  background: #667eea;
-  box-shadow: 0 0 8px rgba(102, 126, 234, 0.5);
+.softmax-track {
+  height: 0.6rem;
+  background: var(--bar-bg);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.softmax-fill {
+  height: 100%;
+  border-radius: 4px;
+  transform-origin: left center;
+  will-change: width, transform;
+}
+
+.softmax-pct {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .activation-panels {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* === Phase 2: hero section + cmdk hint === */
 
 .hero-section {
+  position: relative;
+  isolation: isolate;
+  padding: 5rem 2rem 3rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 24px;
+}
+
+.hero-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.6;
+  pointer-events: none;
+  filter: blur(0.5px);
+}
+
+.hero-backdrop-fallback {
+  background: linear-gradient(135deg, oklch(0.25 0.04 260), oklch(0.2 0.02 260));
+  opacity: 0.4;
+}
+
+.hero-inner {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: 1fr minmax(0, 1.2fr);
   gap: 3rem;
   align-items: center;
-  padding: 3rem 2rem 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
   width: 100%;
 }
 
@@ -478,6 +571,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  color: var(--text-primary);
 }
 
 .hero-title {
@@ -496,7 +590,8 @@ body {
 
 .hero-subtitle {
   font-size: clamp(1rem, 1.5vw, 1.15rem);
-  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+  color: var(--text-primary);
+  opacity: 0.85;
   max-width: 32ch;
   line-height: 1.5;
   margin: 0;
@@ -517,14 +612,97 @@ body {
 
 @media (max-width: 900px) {
   .hero-section {
+    padding: 3rem 1rem;
+  }
+
+  .hero-inner {
     grid-template-columns: 1fr;
     text-align: center;
-    padding: 2rem 1rem;
   }
 
   .hero-visual {
     justify-self: center;
     max-width: 360px;
+  }
+}
+
+/* === Sticky-parallax pipeline section === */
+
+.pipeline-section {
+  position: relative;
+  min-height: 250vh;
+  margin: 4rem auto 6rem;
+  max-width: 1200px;
+  width: 100%;
+  padding: 0 1rem;
+}
+
+.pipeline-sticky {
+  position: sticky;
+  top: 15vh;
+  height: 70vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4rem;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.pipeline-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.5rem 1.75rem;
+  border-radius: 16px;
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
+  backdrop-filter: blur(8px);
+  transition:
+    background var(--transition-speed) ease,
+    border-color var(--transition-speed) ease;
+}
+
+.pipeline-step {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.pipeline-title {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin: 0;
+  background: linear-gradient(90deg, var(--text-primary, #fff) 0%, #8b7cff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.pipeline-copy {
+  font-size: clamp(0.95rem, 1.2vw, 1.05rem);
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin: 0;
+  max-width: 52ch;
+}
+
+@media (max-width: 900px) {
+  .pipeline-section {
+    min-height: 220vh;
+    margin: 2rem auto 3rem;
+  }
+
+  .pipeline-sticky {
+    gap: 2.5rem;
+    padding: 0 1rem;
   }
 }
 

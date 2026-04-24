@@ -13,16 +13,19 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\""
   },
   "dependencies": {
+    "@paper-design/shaders-react": "^0.0.76",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.0",
     "@tailwindcss/vite": "^4.2.4",
     "@types/three": "^0.184.0",
+    "@use-gesture/react": "^10.3.1",
     "axios": "^1.15.2",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "geist": "^1.7.0",
     "lucide-react": "^0.460.0",
     "motion": "^12.38.0",
+    "perfect-freehand": "^1.2.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.5",
     "react-hotkeys-hook": "^4.6.2",
@@ -53,10 +56,10 @@
     "vite": "npm:rolldown-vite@7.2.5"
   },
   "optionalDependencies": {
-    "@rolldown/binding-linux-x64-gnu": "1.0.0-beta.50",
-    "@rolldown/binding-linux-arm64-gnu": "1.0.0-beta.50",
-    "@rolldown/binding-darwin-x64": "1.0.0-beta.50",
     "@rolldown/binding-darwin-arm64": "1.0.0-beta.50",
+    "@rolldown/binding-darwin-x64": "1.0.0-beta.50",
+    "@rolldown/binding-linux-arm64-gnu": "1.0.0-beta.50",
+    "@rolldown/binding-linux-x64-gnu": "1.0.0-beta.50",
     "@rolldown/binding-win32-x64-msvc": "1.0.0-beta.50"
   },
   "lint-staged": {
