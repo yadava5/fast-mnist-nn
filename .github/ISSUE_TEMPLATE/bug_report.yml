@@ -1,0 +1,40 @@
+name: Bug report
+description: Something broken in the C++ core, HTTP server, web app, or tooling
+title: "[bug] "
+labels: ["type/fix", "status/needs-triage"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - core-matrix
+        - core-neuralnet
+        - server
+        - web
+        - tooling
+        - ci
+        - docs
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      placeholder: "Describe observed vs expected"
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal repro
+      placeholder: "Exact commands + inputs"
+  - type: input
+    id: version
+    attributes:
+      label: Commit or tag
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "OS, compiler, CPU features"
