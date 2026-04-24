@@ -9,7 +9,9 @@ import { useDebouncedCallback } from './hooks/useDebounce';
 import './App.css';
 
 function App() {
-  const { theme, toggleTheme } = useTheme();
+  // Hook mount applies theme + persists across toggles; ThemeToggle
+  // reads its own useTheme() internally so we don't need the return here.
+  useTheme();
   const [prediction, setPrediction] = useState<number | null>(null);
   const [confidence, setConfidence] = useState<number[]>([]);
   const [baselineTime, setBaselineTime] = useState<number | null>(null);
@@ -74,7 +76,7 @@ function App() {
   return (
     <div className="app">
       <header className="header">
-        <ThemeToggle theme={theme} onToggle={toggleTheme} />
+        <ThemeToggle />
         <h1>🧠 Fast MNIST Neural Network</h1>
         <p className="subtitle">
           Draw a digit and watch the neural network classify it in real-time
