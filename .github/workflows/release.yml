@@ -6,7 +6,7 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-release:
@@ -54,15 +54,44 @@ jobs:
   publish-release:
     runs-on: ubuntu-latest
     needs: build-release
+    permissions:
+      actions: read
+      artifact-metadata: write
+      attestations: write
+      contents: write
+      id-token: write
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: dist
 
+      - name: Generate release SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: dist
+          format: spdx-json
+          output-file: dist/fast_mnist_cli-release-sbom.spdx.json
+          artifact-name: fast_mnist_cli-release-sbom.spdx.json
+          upload-artifact: true
+          upload-release-assets: false
+
+      - name: Attest release artifacts
+        uses: actions/attest@v4
+        with:
+          subject-path: dist/**/*.zip
+
+      - name: Attest release SBOM
+        uses: actions/attest@v4
+        with:
+          subject-path: dist/**/*.zip
+          sbom-path: dist/fast_mnist_cli-release-sbom.spdx.json
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v3
         with:
           name: Initial release
           generate_release_notes: true
-          files: dist/**/*.zip
+          files: |
+            dist/**/*.zip
+            dist/fast_mnist_cli-release-sbom.spdx.json
