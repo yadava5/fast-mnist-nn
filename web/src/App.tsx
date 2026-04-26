@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { DrawingCanvas } from './components/DrawingCanvas';
 import { PredictionResult } from './components/PredictionResult';
 import { ActivationPanels } from './components/ActivationPanels';
@@ -7,6 +8,8 @@ import { NeuralNetHero } from './components/NeuralNetHero';
 import { HeroBackdrop } from './components/HeroBackdrop';
 import { PipelineCard } from './components/PipelineCard';
 import { CommandPalette } from './components/CommandPalette';
+import { createSampleDigitFive } from './components/sampleDigits';
+import type { Stroke } from './components/strokeReducer';
 import { predict, healthCheck, type PredictionSource } from './api/predict';
 import { useTheme } from './hooks/useTheme';
 import { useDebouncedCallback } from './hooks/useDebounce';
@@ -25,6 +28,12 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [predictionSource, setPredictionSource] = useState<PredictionSource | null>(null);
+  const [strokeCount, setStrokeCount] = useState(0);
+  const [clearSignal, setClearSignal] = useState(0);
+  const [sampleSignal, setSampleSignal] = useState(0);
+  const [sampleStrokes, setSampleStrokes] = useState<Stroke[] | null>(() =>
+    createSampleDigitFive(),
+  );
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -46,15 +55,16 @@ function App() {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-    abortControllerRef.current = new AbortController();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     setIsLoading(true);
 
     try {
-      const result = await predict(pixels, abortControllerRef.current.signal);
+      const result = await predict(pixels, controller.signal);
       setPrediction(result.prediction);
       setConfidence(result.confidence);
-      setBaselineTime(result.baseline_time_ms);
+      setBaselineTime(result.baseline_time_ms > 0 ? result.baseline_time_ms : null);
       setOptimizedTime(result.optimized_time_ms);
       setHiddenActivations(result.hidden_activations);
       setInputGrad(result.input_grad);
@@ -65,15 +75,55 @@ function App() {
       }
       console.error('Prediction failed:', error);
     } finally {
-      setIsLoading(false);
+      if (abortControllerRef.current === controller) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
-  const { debouncedFn: handlePredict } = useDebouncedCallback(performPrediction, 300);
+  const { debouncedFn: handlePredict, cancel: cancelPredictionDebounce } = useDebouncedCallback(
+    performPrediction,
+    300,
+  );
+
+  const resetPrediction = useCallback(() => {
+    cancelPredictionDebounce();
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setPrediction(null);
+    setConfidence([]);
+    setBaselineTime(null);
+    setOptimizedTime(null);
+    setHiddenActivations(undefined);
+    setInputGrad(undefined);
+    setPredictionSource(null);
+    setIsLoading(false);
+  }, [cancelPredictionDebounce]);
+  const canClear = strokeCount > 0 || prediction !== null || confidence.length > 0 || isLoading;
+
+  const handleClearCanvas = useCallback(() => {
+    resetPrediction();
+    setClearSignal((signal) => signal + 1);
+  }, [resetPrediction]);
+
+  const handleLoadSampleDigit = useCallback(() => {
+    resetPrediction();
+    setSampleStrokes(createSampleDigitFive());
+    setSampleSignal((signal) => signal + 1);
+  }, [resetPrediction]);
+
+  const sourceLabel =
+    predictionSource === 'browser-wasm'
+      ? 'wasm-mode'
+      : predictionSource === 'browser-js'
+        ? 'js-demo-mode'
+        : null;
 
   return (
     <div className="app">
-      <header className="header">
+      <motion.header className="header" initial={false}>
         <ThemeToggle />
         <h1>🧠 Fast MNIST Neural Network</h1>
         <p className="subtitle">
@@ -84,24 +134,38 @@ function App() {
           {serverStatus === 'checking' && 'Connecting...'}
           {serverStatus === 'online' && 'Server Online'}
           {serverStatus === 'offline' &&
-            predictionSource !== 'browser' &&
-            'Server Offline - falling back to in-browser WASM'}
+            predictionSource !== 'browser-wasm' &&
+            predictionSource !== 'browser-js' &&
+            'Server Offline - browser fallback ready'}
           {serverStatus === 'offline' &&
-            predictionSource === 'browser' &&
+            predictionSource === 'browser-wasm' &&
             'Running in browser (WASM)'}
+          {serverStatus === 'offline' &&
+            predictionSource === 'browser-js' &&
+            'Running in browser (JS fallback)'}
         </div>
-        {predictionSource === 'browser' && (
-          <div className="wasm-badge" aria-label="Running in-browser WebAssembly">
-            wasm-mode
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {sourceLabel && (
+            <motion.div
+              key={sourceLabel}
+              className={`runtime-badge ${predictionSource ?? ''}`}
+              aria-label={`Prediction source: ${sourceLabel}`}
+              initial={{ opacity: 0, y: -6, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.96 }}
+              transition={{ duration: 0.18 }}
+            >
+              {sourceLabel}
+            </motion.div>
+          )}
+        </AnimatePresence>
         <p className="cmdk-hint" aria-hidden>
           <kbd>⌘</kbd>
           <kbd>K</kbd> for commands
         </p>
-      </header>
+      </motion.header>
 
-      <section className="hero-section">
+      <motion.section id="network" className="hero-section" initial={false}>
         <HeroBackdrop />
         <div className="hero-inner">
           <div className="hero-copy">
@@ -114,29 +178,18 @@ function App() {
             <NeuralNetHero />
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="pipeline-section">
-        <div className="pipeline-sticky">
-          <PipelineCard step="01" title="You draw." copy="28×28 canvas, pixel values in [0, 1]." />
-          <PipelineCard
-            step="02"
-            title="C++ classifies."
-            copy="SIMD kernels (AVX-512 / AVX2 / NEON) run the forward pass."
-          />
-          <PipelineCard
-            step="03"
-            title="You see the answer."
-            copy="10 softmax probabilities, argmax wins."
-          />
-        </div>
-      </section>
-
-      <main className="main-content">
-        <div className="canvas-section">
+      <main id="draw" className="main-content">
+        <motion.div className="canvas-section" initial={false}>
           <h2>✏️ Draw Here</h2>
           <DrawingCanvas
             onPredict={handlePredict}
+            onClear={resetPrediction}
+            onStrokeCountChange={setStrokeCount}
+            clearSignal={clearSignal}
+            sampleSignal={sampleSignal}
+            sampleStrokes={sampleStrokes}
             /*
              * Allow drawing while the server is still being polled
              * (the request will either succeed or fall through to the
@@ -147,9 +200,9 @@ function App() {
             disabled={serverStatus === 'checking'}
             isLoading={isLoading}
           />
-        </div>
+        </motion.div>
 
-        <div className="result-section">
+        <motion.div id="results" className="result-section" initial={false}>
           <h2>🎯 Prediction</h2>
           <PredictionResult
             prediction={prediction}
@@ -164,15 +217,35 @@ function App() {
             hiddenActivations={hiddenActivations}
             inputGrad={inputGrad}
           />
-        </div>
+        </motion.div>
       </main>
+
+      <section id="pipeline" className="pipeline-section">
+        <div className="pipeline-sticky">
+          <PipelineCard step="01" title="You draw." copy="28x28 canvas, pixel values in [0, 1]." />
+          <PipelineCard
+            step="02"
+            title="C++ classifies."
+            copy="SIMD kernels (AVX-512 / AVX2 / NEON) run the forward pass."
+          />
+          <PipelineCard
+            step="03"
+            title="You see the answer."
+            copy="10 softmax probabilities, argmax wins."
+          />
+        </div>
+      </section>
 
       <footer className="footer">
         <p>Built with C++ · SIMD kernels · OpenMP · Motion · React Three Fiber</p>
         <p className="author">By Ayush Yadav · Contributor: Shree Chaturvedi</p>
       </footer>
 
-      <CommandPalette />
+      <CommandPalette
+        onClearCanvas={handleClearCanvas}
+        onLoadSampleDigit={handleLoadSampleDigit}
+        canClear={canClear}
+      />
     </div>
   );
 }

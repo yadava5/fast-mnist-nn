@@ -4,6 +4,8 @@ The `fast-mnist-nn` project ships the same C++ classifier to both a
 native HTTP backend **and** to the browser as a WebAssembly module.
 The web demo tries the backend first and falls back to the WASM path
 when the server is unavailable, so the site runs on any static host.
+If generated WASM artifacts are not present, the frontend uses a small
+browser-only template classifier as a demo fallback instead of breaking.
 
 ## Artifacts
 
@@ -16,6 +18,9 @@ when the server is unavailable, so the site runs on any static host.
 Nothing in `web/public/wasm/` is checked into git — artifacts are
 reproducible via `tools/build_wasm.sh` and the `.github/workflows/
 wasm.yml` workflow uploads them as a CI artifact on every change.
+The JS fallback is intentionally separate from the C++ performance path; it
+exists only to keep zero-cost previews interactive before WASM artifacts are
+staged.
 
 ## Building locally
 
@@ -112,3 +117,7 @@ to the browser:
   the `.wasm` to live next to the `.js`. The TS wrapper passes a
   `locateFile` hook that prefixes `/wasm/`; make sure your host
   serves `web/public/wasm/` at that path.
+- **No WASM artifacts staged yet** — the UI falls back to
+  `web/src/lib/jsFallbackClassifier.ts`. This keeps drawing, command-palette
+  demos, confidence bars, and activation panels usable on free static previews,
+  but it is not used for benchmark claims.

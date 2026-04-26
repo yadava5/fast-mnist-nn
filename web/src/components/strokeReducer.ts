@@ -37,6 +37,7 @@ export type StrokeAction =
   | { type: 'BEGIN_STROKE'; stroke: Stroke }
   | { type: 'EXTEND_STROKE'; points: StrokePoint[] }
   | { type: 'END_STROKE' }
+  | { type: 'LOAD_STROKES'; strokes: Stroke[] }
   | { type: 'UNDO' }
   | { type: 'REDO' }
   | { type: 'CLEAR' };
@@ -76,6 +77,17 @@ export function strokeReducer(state: StrokeState, action: StrokeAction): StrokeS
       // Nothing to do — BEGIN_STROKE already snapshotted for undo.
       // Kept as an explicit action so callers can hook side effects.
       return state;
+    }
+
+    case 'LOAD_STROKES': {
+      return {
+        past: state.present.length === 0 ? [] : [...state.past, state.present],
+        present: action.strokes.map((stroke) => ({
+          ...stroke,
+          points: [...stroke.points],
+        })),
+        future: [],
+      };
     }
 
     case 'UNDO': {
