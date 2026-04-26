@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
+import { BarChart3, Gauge, PencilLine, Rocket } from 'lucide-react';
 
 interface PredictionResultProps {
   prediction: number | null;
@@ -55,7 +56,9 @@ export function PredictionResult({
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.16 }}
             >
-              <span className="placeholder-icon">✏️</span>
+              <span className="placeholder-icon" aria-hidden>
+                <PencilLine size={36} strokeWidth={1.6} />
+              </span>
               <span>Draw a digit (0-9)</span>
             </motion.div>
           )}
@@ -64,7 +67,10 @@ export function PredictionResult({
 
       {(baselineTime !== null || optimizedTime !== null) && (
         <div className="timing-comparison">
-          <h3>⚡ Performance Comparison</h3>
+          <h3 className="panel-heading">
+            <Gauge size={17} strokeWidth={1.8} aria-hidden />
+            <span>Performance Comparison</span>
+          </h3>
           <div className="timing-bars">
             <div className="timing-row">
               <span className="timing-label">Baseline:</span>
@@ -96,14 +102,20 @@ export function PredictionResult({
             </div>
           </div>
           {speedup && parseFloat(speedup) > 1 && (
-            <div className="speedup-badge">🚀 {speedup}x faster!</div>
+            <div className="speedup-badge">
+              <Rocket size={16} strokeWidth={1.8} aria-hidden />
+              <span>{speedup}x faster</span>
+            </div>
           )}
         </div>
       )}
 
       {confidence.length > 0 && (
         <div className="confidence-chart">
-          <h3>📊 Confidence Scores</h3>
+          <h3 className="panel-heading">
+            <BarChart3 size={17} strokeWidth={1.8} aria-hidden />
+            <span>Confidence Scores</span>
+          </h3>
           <div className="confidence-bars">
             {confidence.map((conf, digit) => (
               <div key={digit} className="confidence-row">

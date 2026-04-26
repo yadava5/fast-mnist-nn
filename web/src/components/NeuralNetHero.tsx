@@ -30,12 +30,14 @@ export function NeuralNetHero({ className }: Props) {
 
   return (
     <div ref={ref} className={cn('relative aspect-square w-full max-w-lg', className)}>
-      <img
-        src="/hero-poster.svg"
-        alt=""
-        aria-hidden
-        className="absolute inset-0 h-full w-full object-contain opacity-100"
-      />
+      {!shouldLoad && (
+        <img
+          src="/hero-poster.svg"
+          alt=""
+          aria-hidden
+          className="hero-poster absolute inset-0 h-full w-full object-contain"
+        />
+      )}
       {shouldLoad && (
         <Suspense fallback={null}>
           <Scene />

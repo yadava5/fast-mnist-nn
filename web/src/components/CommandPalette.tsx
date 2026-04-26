@@ -1,9 +1,11 @@
 import { Command } from 'cmdk';
 import {
   Brush,
+  CornerDownLeft,
   Github,
   MoonStar,
   RotateCcw,
+  Search,
   Sparkles,
   Target,
   Workflow,
@@ -11,7 +13,7 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useReducedMotion } from '../hooks/useReducedMotion';
@@ -163,6 +165,7 @@ export function CommandPalette({
         >
           <motion.div
             className="command-shell"
+            layout
             initial={reduced ? false : { opacity: 0, y: -14, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={reduced ? undefined : { opacity: 0, y: -8, scale: 0.98 }}
@@ -170,35 +173,62 @@ export function CommandPalette({
               reduced ? { duration: 0 } : { type: 'spring', stiffness: 360, damping: 32, mass: 0.8 }
             }
           >
-            <Command className="command-panel">
-              <Command.Input placeholder="Type a command..." className="command-input" />
-              <Command.List className="command-list">
-                <Command.Empty className="command-empty">No results.</Command.Empty>
-                <Command.Group heading="Actions">
-                  {actions.map((action) => {
-                    const Icon = action.icon;
-                    return (
-                      <Command.Item
-                        key={action.id}
-                        value={action.label}
-                        keywords={action.keywords}
-                        disabled={action.disabled}
-                        onSelect={() => runAndClose(action.run)}
-                        className="command-item"
-                      >
-                        <span className="command-icon" aria-hidden>
-                          <Icon size={17} strokeWidth={2} />
-                        </span>
-                        <span className="command-copy">
-                          <span className="command-label">{action.label}</span>
-                          <span className="command-detail">{action.detail}</span>
-                        </span>
-                      </Command.Item>
-                    );
-                  })}
-                </Command.Group>
-              </Command.List>
-            </Command>
+            <LayoutGroup>
+              <Command className="command-panel">
+                <div className="command-search-row">
+                  <Search className="command-search-icon" size={18} strokeWidth={1.8} aria-hidden />
+                  <Command.Input placeholder="Type a command..." className="command-input" />
+                  <span className="command-shortcut">Esc</span>
+                </div>
+                <Command.List className="command-list">
+                  <Command.Empty className="command-empty">No results.</Command.Empty>
+                  <Command.Group heading="Actions">
+                    {actions.map((action, index) => {
+                      const Icon = action.icon;
+                      return (
+                        <Command.Item
+                          key={action.id}
+                          value={action.label}
+                          keywords={action.keywords}
+                          disabled={action.disabled}
+                          onSelect={() => runAndClose(action.run)}
+                          className="command-item"
+                        >
+                          <motion.span
+                            className="command-item-motion"
+                            layout
+                            initial={reduced ? false : { opacity: 0, y: 8, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            transition={
+                              reduced
+                                ? { duration: 0 }
+                                : {
+                                    type: 'spring',
+                                    stiffness: 420,
+                                    damping: 34,
+                                    mass: 0.75,
+                                    delay: index * 0.018,
+                                  }
+                            }
+                          >
+                            <span className="command-icon" aria-hidden>
+                              <Icon size={17} strokeWidth={2} />
+                            </span>
+                            <span className="command-copy">
+                              <span className="command-label">{action.label}</span>
+                              <span className="command-detail">{action.detail}</span>
+                            </span>
+                            <span className="command-enter" aria-hidden>
+                              <CornerDownLeft size={14} strokeWidth={1.8} />
+                            </span>
+                          </motion.span>
+                        </Command.Item>
+                      );
+                    })}
+                  </Command.Group>
+                </Command.List>
+              </Command>
+            </LayoutGroup>
           </motion.div>
         </motion.div>
       )}

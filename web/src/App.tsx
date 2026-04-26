@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, MotionConfig, motion } from 'motion/react';
+import { BrainCircuit, PencilLine, Target } from 'lucide-react';
 import { DrawingCanvas } from './components/DrawingCanvas';
 import { PredictionResult } from './components/PredictionResult';
 import { ActivationPanels } from './components/ActivationPanels';
@@ -122,131 +123,146 @@ function App() {
         : null;
 
   return (
-    <div className="app">
-      <motion.header className="header" initial={false}>
-        <ThemeToggle />
-        <h1>🧠 Fast MNIST Neural Network</h1>
-        <p className="subtitle">
-          Draw a digit and watch the neural network classify it in real-time
-        </p>
-        <div className={`server-status ${serverStatus}`}>
-          <span className="status-dot"></span>
-          {serverStatus === 'checking' && 'Connecting...'}
-          {serverStatus === 'online' && 'Server Online'}
-          {serverStatus === 'offline' &&
-            predictionSource !== 'browser-wasm' &&
-            predictionSource !== 'browser-js' &&
-            'Server Offline - browser fallback ready'}
-          {serverStatus === 'offline' &&
-            predictionSource === 'browser-wasm' &&
-            'Running in browser (WASM)'}
-          {serverStatus === 'offline' &&
-            predictionSource === 'browser-js' &&
-            'Running in browser (JS fallback)'}
-        </div>
-        <AnimatePresence mode="wait">
-          {sourceLabel && (
-            <motion.div
-              key={sourceLabel}
-              className={`runtime-badge ${predictionSource ?? ''}`}
-              aria-label={`Prediction source: ${sourceLabel}`}
-              initial={{ opacity: 0, y: -6, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -6, scale: 0.96 }}
-              transition={{ duration: 0.18 }}
-            >
-              {sourceLabel}
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <p className="cmdk-hint" aria-hidden>
-          <kbd>⌘</kbd>
-          <kbd>K</kbd> for commands
-        </p>
-      </motion.header>
-
-      <motion.section id="network" className="hero-section" initial={false}>
-        <HeroBackdrop />
-        <div className="hero-inner">
-          <div className="hero-copy">
-            <h2 className="hero-title">784 → 100 → 10</h2>
-            <p className="hero-subtitle">
-              A handwritten C++ multilayer perceptron with SIMD kernels and OpenMP, visualized.
-            </p>
+    <MotionConfig transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.9 }}>
+      <div className="app">
+        <motion.header className="header" initial={false}>
+          <ThemeToggle className="theme-toggle" />
+          <h1 className="brand-title">
+            <BrainCircuit className="brand-mark" size={34} strokeWidth={1.75} aria-hidden />
+            <span>Fast MNIST Neural Network</span>
+          </h1>
+          <p className="subtitle">
+            Draw a digit and watch the neural network classify it in real-time
+          </p>
+          <div className={`server-status ${serverStatus}`}>
+            <span className="status-dot"></span>
+            {serverStatus === 'checking' && 'Connecting...'}
+            {serverStatus === 'online' && 'Server Online'}
+            {serverStatus === 'offline' &&
+              predictionSource !== 'browser-wasm' &&
+              predictionSource !== 'browser-js' &&
+              'Server Offline - browser fallback ready'}
+            {serverStatus === 'offline' &&
+              predictionSource === 'browser-wasm' &&
+              'Running in browser (WASM)'}
+            {serverStatus === 'offline' &&
+              predictionSource === 'browser-js' &&
+              'Running in browser (JS fallback)'}
           </div>
-          <div className="hero-visual">
-            <NeuralNetHero />
+          <AnimatePresence mode="wait">
+            {sourceLabel && (
+              <motion.div
+                key={sourceLabel}
+                className={`runtime-badge ${predictionSource ?? ''}`}
+                aria-label={`Prediction source: ${sourceLabel}`}
+                initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                transition={{ duration: 0.18 }}
+              >
+                {sourceLabel}
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <p className="cmdk-hint" aria-hidden>
+            <kbd>⌘</kbd>
+            <kbd>K</kbd> for commands
+          </p>
+        </motion.header>
+
+        <main id="draw" className="main-content">
+          <motion.div className="canvas-section" initial={false}>
+            <h2 className="section-heading">
+              <PencilLine size={20} strokeWidth={1.8} aria-hidden />
+              <span>Draw Here</span>
+            </h2>
+            <DrawingCanvas
+              onPredict={handlePredict}
+              onClear={resetPrediction}
+              onStrokeCountChange={setStrokeCount}
+              clearSignal={clearSignal}
+              sampleSignal={sampleSignal}
+              sampleStrokes={sampleStrokes}
+              /*
+               * Allow drawing while the server is still being polled
+               * (the request will either succeed or fall through to the
+               * WASM classifier) and when the server is offline (the
+               * fallback handles the request). Only 'checking' locks the
+               * canvas, briefly, during the initial health probe.
+               */
+              disabled={serverStatus === 'checking'}
+              isLoading={isLoading}
+            />
+          </motion.div>
+
+          <motion.div id="results" className="result-section" initial={false}>
+            <h2 className="section-heading">
+              <Target size={20} strokeWidth={1.8} aria-hidden />
+              <span>Prediction</span>
+            </h2>
+            <PredictionResult
+              prediction={prediction}
+              confidence={confidence}
+              baselineTime={baselineTime}
+              optimizedTime={optimizedTime}
+              isLoading={isLoading}
+            />
+            <ActivationPanels
+              prediction={prediction}
+              confidence={confidence}
+              hiddenActivations={hiddenActivations}
+              inputGrad={inputGrad}
+            />
+          </motion.div>
+        </main>
+
+        <motion.section id="network" className="hero-section" initial={false}>
+          <HeroBackdrop />
+          <div className="hero-inner">
+            <div className="hero-copy">
+              <h2 className="hero-title">784 → 100 → 10</h2>
+              <p className="hero-subtitle">
+                A handwritten C++ multilayer perceptron with SIMD kernels and OpenMP, visualized.
+              </p>
+            </div>
+            <div className="hero-visual">
+              <NeuralNetHero />
+            </div>
           </div>
-        </div>
-      </motion.section>
+        </motion.section>
 
-      <main id="draw" className="main-content">
-        <motion.div className="canvas-section" initial={false}>
-          <h2>✏️ Draw Here</h2>
-          <DrawingCanvas
-            onPredict={handlePredict}
-            onClear={resetPrediction}
-            onStrokeCountChange={setStrokeCount}
-            clearSignal={clearSignal}
-            sampleSignal={sampleSignal}
-            sampleStrokes={sampleStrokes}
-            /*
-             * Allow drawing while the server is still being polled
-             * (the request will either succeed or fall through to the
-             * WASM classifier) and when the server is offline (the
-             * fallback handles the request). Only 'checking' locks the
-             * canvas, briefly, during the initial health probe.
-             */
-            disabled={serverStatus === 'checking'}
-            isLoading={isLoading}
-          />
-        </motion.div>
+        <section id="pipeline" className="pipeline-section">
+          <div className="pipeline-sticky">
+            <PipelineCard
+              step="01"
+              title="You draw."
+              copy="28x28 canvas, pixel values in [0, 1]."
+            />
+            <PipelineCard
+              step="02"
+              title="C++ classifies."
+              copy="SIMD kernels (AVX-512 / AVX2 / NEON) run the forward pass."
+            />
+            <PipelineCard
+              step="03"
+              title="You see the answer."
+              copy="10 softmax probabilities, argmax wins."
+            />
+          </div>
+        </section>
 
-        <motion.div id="results" className="result-section" initial={false}>
-          <h2>🎯 Prediction</h2>
-          <PredictionResult
-            prediction={prediction}
-            confidence={confidence}
-            baselineTime={baselineTime}
-            optimizedTime={optimizedTime}
-            isLoading={isLoading}
-          />
-          <ActivationPanels
-            prediction={prediction}
-            confidence={confidence}
-            hiddenActivations={hiddenActivations}
-            inputGrad={inputGrad}
-          />
-        </motion.div>
-      </main>
+        <footer className="footer">
+          <p>Built with C++ · SIMD kernels · OpenMP · Motion · React Three Fiber</p>
+          <p className="author">By Ayush Yadav · Contributor: Shree Chaturvedi</p>
+        </footer>
 
-      <section id="pipeline" className="pipeline-section">
-        <div className="pipeline-sticky">
-          <PipelineCard step="01" title="You draw." copy="28x28 canvas, pixel values in [0, 1]." />
-          <PipelineCard
-            step="02"
-            title="C++ classifies."
-            copy="SIMD kernels (AVX-512 / AVX2 / NEON) run the forward pass."
-          />
-          <PipelineCard
-            step="03"
-            title="You see the answer."
-            copy="10 softmax probabilities, argmax wins."
-          />
-        </div>
-      </section>
-
-      <footer className="footer">
-        <p>Built with C++ · SIMD kernels · OpenMP · Motion · React Three Fiber</p>
-        <p className="author">By Ayush Yadav · Contributor: Shree Chaturvedi</p>
-      </footer>
-
-      <CommandPalette
-        onClearCanvas={handleClearCanvas}
-        onLoadSampleDigit={handleLoadSampleDigit}
-        canClear={canClear}
-      />
-    </div>
+        <CommandPalette
+          onClearCanvas={handleClearCanvas}
+          onLoadSampleDigit={handleLoadSampleDigit}
+          canClear={canClear}
+        />
+      </div>
+    </MotionConfig>
   );
 }
 

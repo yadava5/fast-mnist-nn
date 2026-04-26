@@ -34,5 +34,5 @@ export function readInitialTheme(): Theme {
   } catch {
     // ignored — fall through to system preference
   }
-  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  return 'dark';
 }
