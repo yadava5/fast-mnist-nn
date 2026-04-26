@@ -47,6 +47,7 @@ def enable_tqdm(auto_install: bool) -> bool:
     if not auto_install:
         return False
     print("tqdm not found; installing with pip...")
+    requirements = Path(__file__).with_name("requirements-bootstrap.txt")
     result = subprocess.run(
         [
             sys.executable,
@@ -56,7 +57,9 @@ def enable_tqdm(auto_install: bool) -> bool:
             "--user",
             "--break-system-packages",
             "--no-warn-script-location",
-            "tqdm",
+            "--require-hashes",
+            "-r",
+            str(requirements),
         ],
         check=False,
     )

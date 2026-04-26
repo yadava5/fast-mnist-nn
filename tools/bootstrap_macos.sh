@@ -8,6 +8,8 @@ fi
 
 brew install cmake libomp
 
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
 if python3 - <<'PY' >/dev/null 2>&1; then
 import tqdm  # noqa: F401
 PY
@@ -15,6 +17,7 @@ PY
 fi
 
 python3 -m pip install --user --break-system-packages \
-  --no-warn-script-location tqdm || {
+  --no-warn-script-location --require-hashes \
+  -r "$script_dir/requirements-bootstrap.txt" || {
   echo "tqdm install failed; prepare_mnist.py will use basic progress."
 }
