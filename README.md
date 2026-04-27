@@ -22,17 +22,19 @@ run in your browser.
 [**fast-mnist-nn-yadava5.vercel.app**][live-url] — draw a digit, see the
 prediction, rotate the network.
 
-> Hosted demo is a Vercel preview; the `/predict` endpoint falls back to an
-> in-browser WASM build if the C++ server is cold. If WASM artifacts are not
-> staged yet, the UI still runs with a browser-only demo classifier.
+> Hosted demo is a zero-cost Vercel deployment. It tries a C++ `/predict`
+> API first, then staged browser WASM artifacts, then a browser-only demo
+> classifier so the public app remains interactive without paid backend
+> hosting.
 
-## 30-second demo
+## Demo preview
 
-<!-- demo video is recorded via charm VHS once the hosted demo stabilises -->
-<video src="docs/branding/demo.mp4" width="760" autoplay muted loop playsinline>
-  Hand-drawn "7" classified in real time, with activations flowing through
-  the 784 → 100 → 10 network as the camera revolves around the 3D model.
-</video>
+<img src="web/public/hero-poster.svg" width="760"
+     alt="Fast MNIST NN animated web demo preview">
+
+Draw a digit, load the sample through the command palette, inspect real
+softmax and saliency output, and scroll through the animated 784 -> 100 -> 10
+pipeline stage.
 
 ## What it is
 

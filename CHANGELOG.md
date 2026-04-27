@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-04-27
+
 ### Added
 - **Phase 0 — repo hygiene.** Track-branch workflow on GitHub with `hygiene`, `frontend`, `backend`, `optimization` long-running branches; feature PRs target tracks, major merges target `main`.
 - **Phase 0 — community health.** `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SUPPORT.md`, `.github/CODEOWNERS`, `.editorconfig`.
@@ -20,21 +22,22 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 - **Phase 2 — real activation viz.** Saliency + heatmap + softmax components wired to the new `/predict` payload.
 - **Phase 2 — paper-shaders hero backdrop.** Sticky-parallax pipeline for the landing surface.
 - **Docs.** README rewritten for current project state; `BENCHMARKS.md` extracted with methodology + analysis; `docs/adr/` seeded with ADR-0001 (hand-rolled SIMD), ADR-0002 (two-layer MLP), ADR-0003 (split server + SPA).
-
-### Changed
-- `web/src/api/predict.ts` API base is now env-driven (`VITE_API_BASE_URL`) with `http://localhost:8080` fallback for dev.
-- `web/src/App.tsx` wires the Phase 2 scaffolds (3D hero, canvas, activations) into the app shell.
-
-## [1.0.0] - 2026-04-22
-
-### Added
+- **Phase 6 — security release infrastructure.** OpenSSF Scorecard, pinned GitHub Actions dependencies, tightened workflow token permissions, release SBOM generation, GitHub artifact attestations, and a PR-only ClusterFuzzLite matrix harness.
+- **Phase 7 — animated demo polish.** Motion-driven command palette, first-viewport runnable classifier, scroll progress indicator, Framer-inspired 3D pipeline showcase, and Playwright desktop/mobile validation.
 - Interactive React frontend at `web/` — draw a digit on a 280×280 canvas, see live predictions with 300ms debounce.
 - Neural network visualisation with particle animation showing activations flowing through layers.
 - Dark/light theme toggle with system preference detection and localStorage persistence.
 - C++ HTTP API server (`apps/server.cpp`) exposing `/health` and `/predict` endpoints, 100-iteration timing comparison between baseline scalar and SIMD-optimized inference.
 
+### Changed
+- `web/src/api/predict.ts` API base is now env-driven (`VITE_API_BASE_URL`) with `http://localhost:8080` fallback for dev.
+- `web/src/App.tsx` wires the 3D hero, canvas, activations, command palette, JS fallback, and scroll-driven pipeline showcase into the app shell.
+- Release archives now package the native CLI, server, trainer, and weight exporter per OS, with SPDX SBOM and artifact attestations.
+- CMake project version bumped to `1.0.0`.
+
 ### Fixed
 - ESLint error: removed `setState` in `useEffect` cycle.
+- `web/package-lock.json` now includes all optional peer lock entries needed for clean `npm ci` on Node 20 CI.
 
 ### Infrastructure
 - README expanded with web frontend docs; VSCode IntelliSense C++ config updated.
@@ -55,5 +58,5 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 - Doxygen config + docs target.
 
 [Unreleased]: https://github.com/yadava5/fast-mnist-nn/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/yadava5/fast-mnist-nn/compare/v0.1.0...v1.0.0
+[1.0.0]: https://github.com/yadava5/fast-mnist-nn/releases/tag/v1.0.0
 [0.1.0]: https://github.com/yadava5/fast-mnist-nn/releases/tag/v0.1.0

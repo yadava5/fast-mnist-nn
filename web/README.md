@@ -24,6 +24,9 @@ digit, jump between sections, toggle theme, or reset the canvas.
 ## Checks
 
 ```sh
+npm ci --no-audit --no-fund
 npm run lint
 npm run build
+npm run format:check
+npm run test:e2e
 ```
