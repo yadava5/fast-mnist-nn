@@ -14,25 +14,28 @@ run in your browser.
 [![ci][ci-badge]][ci-url]
 [![license][license-badge]][license-url]
 [![release][release-badge]][release-url]
-[![try it live][live-badge]][live-url]
+[![web app][web-badge]][web-url]
 [![openssf scorecard][scorecard-badge]][scorecard-url]
 
-## Try it live
+## Web demo
 
-[**fast-mnist-nn-yadava5.vercel.app**][live-url] — draw a digit, see the
-prediction, rotate the network.
+The React demo is ready for local use and zero-cost Vercel deployment. Draw a
+digit, see the prediction, rotate the network, and inspect the activation
+pipeline. See [`web/README.md`](web/README.md) for the deploy/run commands.
 
-> Hosted demo is a Vercel preview; the `/predict` endpoint falls back to an
-> in-browser WASM build if the C++ server is cold. If WASM artifacts are not
-> staged yet, the UI still runs with a browser-only demo classifier.
+> The public deployment target is Vercel Hobby with root directory `web`. It
+> tries a C++ `/predict` API first, then staged browser WASM artifacts, then a
+> browser-only demo classifier so the app remains interactive without paid
+> backend hosting.
 
-## 30-second demo
+## Demo preview
 
-<!-- demo video is recorded via charm VHS once the hosted demo stabilises -->
-<video src="docs/branding/demo.mp4" width="760" autoplay muted loop playsinline>
-  Hand-drawn "7" classified in real time, with activations flowing through
-  the 784 → 100 → 10 network as the camera revolves around the 3D model.
-</video>
+<img src="web/public/hero-poster.svg" width="760"
+     alt="Fast MNIST NN animated web demo preview">
+
+Draw a digit, load the sample through the command palette, inspect real
+softmax and saliency output, and scroll through the animated 784 -> 100 -> 10
+pipeline stage.
 
 ## What it is
 
@@ -211,7 +214,7 @@ MIT — see [`LICENSE`](LICENSE).
 [license-url]: LICENSE
 [release-badge]: https://img.shields.io/github/v/release/yadava5/fast-mnist-nn?sort=semver
 [release-url]: https://github.com/yadava5/fast-mnist-nn/releases
-[live-badge]: https://img.shields.io/badge/try%20it-live-brightgreen
-[live-url]: https://fast-mnist-nn-yadava5.vercel.app
+[web-badge]: https://img.shields.io/badge/web-demo-brightgreen
+[web-url]: web/README.md
 [scorecard-badge]: https://api.securityscorecards.dev/projects/github.com/yadava5/fast-mnist-nn/badge
 [scorecard-url]: https://securityscorecards.dev/viewer/?uri=github.com/yadava5/fast-mnist-nn
