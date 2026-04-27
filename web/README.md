@@ -21,6 +21,18 @@ The app tries prediction in this order:
 Use `Cmd+K` / `Ctrl+K` to open the animated command palette, load the sample
 digit, jump between sections, toggle theme, or reset the canvas.
 
+## Deploy
+
+Use Vercel Hobby/free with this directory as the project root:
+
+```sh
+vercel deploy --prod --yes
+```
+
+Build command: `npm run build`. Output directory: `dist`. Leave
+`VITE_API_BASE_URL` unset for a static, zero-cost deployment that relies on
+WASM or the browser-only fallback.
+
 ## Checks
 
 ```sh

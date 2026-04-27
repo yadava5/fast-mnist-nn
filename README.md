@@ -14,18 +14,19 @@ run in your browser.
 [![ci][ci-badge]][ci-url]
 [![license][license-badge]][license-url]
 [![release][release-badge]][release-url]
-[![try it live][live-badge]][live-url]
+[![web app][web-badge]][web-url]
 [![openssf scorecard][scorecard-badge]][scorecard-url]
 
-## Try it live
+## Web demo
 
-[**fast-mnist-nn-yadava5.vercel.app**][live-url] — draw a digit, see the
-prediction, rotate the network.
+The React demo is ready for local use and zero-cost Vercel deployment. Draw a
+digit, see the prediction, rotate the network, and inspect the activation
+pipeline. See [`web/README.md`](web/README.md) for the deploy/run commands.
 
-> Hosted demo is a zero-cost Vercel deployment. It tries a C++ `/predict`
-> API first, then staged browser WASM artifacts, then a browser-only demo
-> classifier so the public app remains interactive without paid backend
-> hosting.
+> The public deployment target is Vercel Hobby with root directory `web`. It
+> tries a C++ `/predict` API first, then staged browser WASM artifacts, then a
+> browser-only demo classifier so the app remains interactive without paid
+> backend hosting.
 
 ## Demo preview
 
@@ -213,7 +214,7 @@ MIT — see [`LICENSE`](LICENSE).
 [license-url]: LICENSE
 [release-badge]: https://img.shields.io/github/v/release/yadava5/fast-mnist-nn?sort=semver
 [release-url]: https://github.com/yadava5/fast-mnist-nn/releases
-[live-badge]: https://img.shields.io/badge/try%20it-live-brightgreen
-[live-url]: https://fast-mnist-nn-yadava5.vercel.app
+[web-badge]: https://img.shields.io/badge/web-demo-brightgreen
+[web-url]: web/README.md
 [scorecard-badge]: https://api.securityscorecards.dev/projects/github.com/yadava5/fast-mnist-nn/badge
 [scorecard-url]: https://securityscorecards.dev/viewer/?uri=github.com/yadava5/fast-mnist-nn
