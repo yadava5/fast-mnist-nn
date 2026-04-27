@@ -18,12 +18,7 @@ export function NeuralNetHero({ className }: Props) {
     const io = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          const start = () => setShouldLoad(true);
-          if ('requestIdleCallback' in window) {
-            (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(start);
-          } else {
-            setTimeout(start, 0);
-          }
+          setShouldLoad(true);
           io.disconnect();
         }
       },
@@ -34,16 +29,15 @@ export function NeuralNetHero({ className }: Props) {
   }, [shouldLoad]);
 
   return (
-    <div
-      ref={ref}
-      className={cn('relative aspect-square w-full max-w-lg', className)}
-    >
-      <img
-        src="/hero-poster.svg"
-        alt=""
-        aria-hidden
-        className="absolute inset-0 h-full w-full object-contain opacity-80"
-      />
+    <div ref={ref} className={cn('relative aspect-square w-full max-w-lg', className)}>
+      {!shouldLoad && (
+        <img
+          src="/hero-poster.svg"
+          alt=""
+          aria-hidden
+          className="hero-poster absolute inset-0 h-full w-full object-contain"
+        />
+      )}
       {shouldLoad && (
         <Suspense fallback={null}>
           <Scene />

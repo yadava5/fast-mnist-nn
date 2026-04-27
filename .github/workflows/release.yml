@@ -36,20 +36,28 @@ jobs:
       - name: Package (macOS/Linux)
         if: runner.os != 'Windows'
         run: >
-          cmake -E tar cfv fast_mnist_cli-${{ runner.os }}.zip --format=zip
-          build/fast_mnist_cli README.md LICENSE
+          cmake -E tar cfv fast_mnist_native-${{ runner.os }}.zip --format=zip
+          build/fast_mnist_cli
+          build/fast_mnist_server
+          build/fast_mnist_trainer
+          build/export_weights
+          README.md LICENSE
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: >
-          cmake -E tar cfv fast_mnist_cli-${{ runner.os }}.zip --format=zip
-          build/Release/fast_mnist_cli.exe README.md LICENSE
+          cmake -E tar cfv fast_mnist_native-${{ runner.os }}.zip --format=zip
+          build/Release/fast_mnist_cli.exe
+          build/Release/fast_mnist_server.exe
+          build/Release/fast_mnist_trainer.exe
+          build/Release/export_weights.exe
+          README.md LICENSE
 
       - name: Upload artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: fast_mnist_cli-${{ runner.os }}
-          path: fast_mnist_cli-${{ runner.os }}.zip
+          name: fast_mnist_native-${{ runner.os }}
+          path: fast_mnist_native-${{ runner.os }}.zip
 
   publish-release:
     runs-on: ubuntu-latest
@@ -71,8 +79,8 @@ jobs:
         with:
           path: dist
           format: spdx-json
-          output-file: dist/fast_mnist_cli-release-sbom.spdx.json
-          artifact-name: fast_mnist_cli-release-sbom.spdx.json
+          output-file: dist/fast_mnist_native-release-sbom.spdx.json
+          artifact-name: fast_mnist_native-release-sbom.spdx.json
           upload-artifact: true
           upload-release-assets: false
 
@@ -85,13 +93,13 @@ jobs:
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
         with:
           subject-path: dist/**/*.zip
-          sbom-path: dist/fast_mnist_cli-release-sbom.spdx.json
+          sbom-path: dist/fast_mnist_native-release-sbom.spdx.json
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
         with:
-          name: Initial release
+          name: Fast MNIST NN ${{ github.ref_name }}
           generate_release_notes: true
           files: |
             dist/**/*.zip
-            dist/fast_mnist_cli-release-sbom.spdx.json
+            dist/fast_mnist_native-release-sbom.spdx.json

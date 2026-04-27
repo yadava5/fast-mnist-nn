@@ -1,3 +1,6 @@
+import { AnimatePresence, motion } from 'motion/react';
+import { BarChart3, Gauge, PencilLine, Rocket } from 'lucide-react';
+
 interface PredictionResultProps {
   prediction: number | null;
   confidence: number[];
@@ -13,44 +16,69 @@ export function PredictionResult({
   optimizedTime,
   isLoading,
 }: PredictionResultProps) {
-  const speedup = baselineTime && optimizedTime 
-    ? (baselineTime / optimizedTime).toFixed(1) 
-    : null;
+  const speedup = baselineTime && optimizedTime ? (baselineTime / optimizedTime).toFixed(1) : null;
 
   return (
     <div className="prediction-result">
       <div className="prediction-main">
-        {isLoading ? (
-          <div className="loading">
-            <div className="spinner"></div>
-            <span>Analyzing...</span>
-          </div>
-        ) : prediction !== null ? (
-          <>
-            <div className="predicted-digit">{prediction}</div>
-            <div className="confidence-label">
-              {(confidence[prediction] * 100).toFixed(1)}% confidence
-            </div>
-          </>
-        ) : (
-          <div className="placeholder">
-            <span className="placeholder-icon">✏️</span>
-            <span>Draw a digit (0-9)</span>
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {isLoading ? (
+            <motion.div
+              key="loading"
+              className="loading"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.16 }}
+            >
+              <div className="spinner"></div>
+              <span>Analyzing...</span>
+            </motion.div>
+          ) : prediction !== null ? (
+            <motion.div
+              key={`prediction-${prediction}`}
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 26 }}
+            >
+              <div className="predicted-digit">{prediction}</div>
+              <div className="confidence-label">
+                {((confidence[prediction] ?? 0) * 100).toFixed(1)}% confidence
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="placeholder"
+              className="placeholder"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.16 }}
+            >
+              <span className="placeholder-icon" aria-hidden>
+                <PencilLine size={36} strokeWidth={1.6} />
+              </span>
+              <span>Draw a digit (0-9)</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {(baselineTime !== null || optimizedTime !== null) && (
         <div className="timing-comparison">
-          <h3>⚡ Performance Comparison</h3>
+          <h3 className="panel-heading">
+            <Gauge size={17} strokeWidth={1.8} aria-hidden />
+            <span>Performance Comparison</span>
+          </h3>
           <div className="timing-bars">
             <div className="timing-row">
               <span className="timing-label">Baseline:</span>
               <div className="timing-bar-container">
-                <div 
+                <div
                   className="timing-bar baseline"
-                  style={{ 
-                    width: baselineTime ? `${Math.min(100, baselineTime / 10)}%` : '0%' 
+                  style={{
+                    width: baselineTime ? `${Math.min(100, baselineTime / 10)}%` : '0%',
                   }}
                 />
               </div>
@@ -61,10 +89,10 @@ export function PredictionResult({
             <div className="timing-row">
               <span className="timing-label">Optimized:</span>
               <div className="timing-bar-container">
-                <div 
+                <div
                   className="timing-bar optimized"
-                  style={{ 
-                    width: optimizedTime ? `${Math.min(100, optimizedTime / 10)}%` : '0%' 
+                  style={{
+                    width: optimizedTime ? `${Math.min(100, optimizedTime / 10)}%` : '0%',
                   }}
                 />
               </div>
@@ -75,7 +103,8 @@ export function PredictionResult({
           </div>
           {speedup && parseFloat(speedup) > 1 && (
             <div className="speedup-badge">
-              🚀 {speedup}x faster!
+              <Rocket size={16} strokeWidth={1.8} aria-hidden />
+              <span>{speedup}x faster</span>
             </div>
           )}
         </div>
@@ -83,13 +112,16 @@ export function PredictionResult({
 
       {confidence.length > 0 && (
         <div className="confidence-chart">
-          <h3>📊 Confidence Scores</h3>
+          <h3 className="panel-heading">
+            <BarChart3 size={17} strokeWidth={1.8} aria-hidden />
+            <span>Confidence Scores</span>
+          </h3>
           <div className="confidence-bars">
             {confidence.map((conf, digit) => (
               <div key={digit} className="confidence-row">
                 <span className="digit-label">{digit}</span>
                 <div className="confidence-bar-container">
-                  <div 
+                  <div
                     className={`confidence-bar ${digit === prediction ? 'active' : ''}`}
                     style={{ width: `${conf * 100}%` }}
                   />

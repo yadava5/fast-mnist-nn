@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(fast_mnist_nn VERSION 0.1.0 LANGUAGES CXX)
+project(fast_mnist_nn VERSION 1.0.0 LANGUAGES CXX)
 
 option(FAST_MNIST_ENABLE_OPENMP "Enable OpenMP support" ON)
 option(FAST_MNIST_ENABLE_NATIVE "Enable -march=native" OFF)

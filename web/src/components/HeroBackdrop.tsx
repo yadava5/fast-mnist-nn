@@ -19,10 +19,10 @@ export function HeroBackdrop() {
       <MeshGradient
         className="hero-backdrop"
         colors={[
-          'oklch(0.25 0.04 260)',
-          'oklch(0.5 0.22 280)',
-          'oklch(0.45 0.15 220)',
-          'oklch(0.2 0.02 260)',
+          'oklch(0.28 0.04 180)',
+          'oklch(0.72 0.17 195)',
+          'oklch(0.76 0.16 145)',
+          'oklch(0.24 0.03 300)',
         ]}
         speed={reduced ? 0 : 0.25}
         distortion={0.7}
