@@ -2,7 +2,7 @@ import { Command } from 'cmdk';
 import {
   Brush,
   CornerDownLeft,
-  Github,
+  GitPullRequest,
   MoonStar,
   RotateCcw,
   Search,
@@ -131,7 +131,7 @@ export function CommandPalette({
       id: 'repo',
       label: 'Open repo on GitHub',
       detail: 'View source code',
-      icon: Github,
+      icon: GitPullRequest,
       keywords: ['github', 'repo', 'source'],
       run: () => {
         window.open('https://github.com/yadava5/fast-mnist-nn', '_blank', 'noopener');
