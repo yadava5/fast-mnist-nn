@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { Redo2, RotateCcw, Trash2, Undo2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { getStroke } from 'perfect-freehand';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { springs } from '../lib/springs';
 import { useReducedMotion } from '../hooks/useReducedMotion';
-import {
-  initialStrokeState,
-  strokeReducer,
-  type Stroke,
-  type StrokePoint,
-} from './strokeReducer';
+import { initialStrokeState, strokeReducer, type Stroke, type StrokePoint } from './strokeReducer';
 
 interface DrawingCanvasProps {
   onPredict: (imageData: number[]) => void;
   onStroke?: () => void;
+  onClear?: () => void;
+  onStrokeCountChange?: (count: number) => void;
+  clearSignal?: number;
+  sampleSignal?: number;
+  sampleStrokes?: Stroke[] | null;
   disabled?: boolean;
   isLoading?: boolean;
 }
@@ -48,7 +49,7 @@ function outlineToPath(outline: number[][]): string {
     const [x1, y1] = outline[i];
     const [x2, y2] = outline[(i + 1) % outline.length];
     d.push(
-      `Q ${x1.toFixed(2)} ${y1.toFixed(2)} ${((x1 + x2) / 2).toFixed(2)} ${((y1 + y2) / 2).toFixed(2)}`
+      `Q ${x1.toFixed(2)} ${y1.toFixed(2)} ${((x1 + x2) / 2).toFixed(2)} ${((y1 + y2) / 2).toFixed(2)}`,
     );
   }
   d.push('Z');
@@ -73,6 +74,11 @@ function strokeToPath(stroke: Stroke, isLive: boolean): string {
 export function DrawingCanvas({
   onPredict,
   onStroke,
+  onClear,
+  onStrokeCountChange,
+  clearSignal = 0,
+  sampleSignal = 0,
+  sampleStrokes = null,
   disabled = false,
   isLoading = false,
 }: DrawingCanvasProps) {
@@ -90,12 +96,17 @@ export function DrawingCanvas({
 
   // Debounce handle for live prediction during pointermove.
   const predictTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const clearPredictTimer = () => {
+  const pendingProgrammaticPredictRef = useRef(false);
+  const clearPredictTimer = useCallback(() => {
     if (predictTimerRef.current !== null) {
       clearTimeout(predictTimerRef.current);
       predictTimerRef.current = null;
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    onStrokeCountChange?.(state.present.length);
+  }, [onStrokeCountChange, state.present.length]);
 
   // Rasterize the current strokes to a 28x28 offscreen canvas and
   // return 784 Float32 values in [0, 1], white-on-black - matching
@@ -148,7 +159,7 @@ export function DrawingCanvas({
       const pixels = extractPixels();
       onPredict(pixels);
     }, LIVE_PREDICT_DEBOUNCE_MS);
-  }, [extractPixels, onPredict]);
+  }, [clearPredictTimer, extractPixels, onPredict]);
 
   // Coordinate conversion: CSS pixel -> SVG viewBox (0..280).
   const toSvgCoords = useCallback((clientX: number, clientY: number) => {
@@ -191,7 +202,13 @@ export function DrawingCanvas({
       typeof e.nativeEvent.getCoalescedEvents === 'function'
         ? e.nativeEvent.getCoalescedEvents()
         : [];
-    const sources: Array<{ clientX: number; clientY: number; pressure: number; timeStamp: number; pointerType: string }> =
+    const sources: Array<{
+      clientX: number;
+      clientY: number;
+      pressure: number;
+      timeStamp: number;
+      pointerType: string;
+    }> =
       events.length > 0
         ? events.map((c) => ({
             clientX: c.clientX,
@@ -239,7 +256,7 @@ export function DrawingCanvas({
       const pixels = extractPixels();
       onPredict(pixels);
     },
-    [isDrawing, extractPixels, onPredict, onStroke]
+    [clearPredictTimer, isDrawing, extractPixels, onPredict, onStroke],
   );
 
   const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -258,7 +275,7 @@ export function DrawingCanvas({
       evt.preventDefault();
       dispatch({ type: 'UNDO' });
     },
-    { enableOnFormTags: false, enabled: !disabled }
+    { enableOnFormTags: false, enabled: !disabled },
   );
   useHotkeys(
     'mod+shift+z',
@@ -266,13 +283,14 @@ export function DrawingCanvas({
       evt.preventDefault();
       dispatch({ type: 'REDO' });
     },
-    { enableOnFormTags: false, enabled: !disabled }
+    { enableOnFormTags: false, enabled: !disabled },
   );
 
   // Re-predict whenever the committed stroke set changes from UNDO/REDO/CLEAR
   // (pointer-driven paths already call onPredict directly on pointerup).
   useEffect(() => {
     if (isDrawing) return;
+    if (pendingProgrammaticPredictRef.current) return;
     // Only re-predict when there is something to predict.
     if (state.present.length === 0) return;
     schedulePrediction();
@@ -280,12 +298,34 @@ export function DrawingCanvas({
   }, [state.present, isDrawing]);
 
   // Clean up any outstanding debounce on unmount.
-  useEffect(() => () => clearPredictTimer(), []);
+  useEffect(() => () => clearPredictTimer(), [clearPredictTimer]);
 
   const handleClear = () => {
-    if (disabled) return;
+    if (disabled && state.present.length === 0) return;
+    clearPredictTimer();
     dispatch({ type: 'CLEAR' });
+    onClear?.();
   };
+
+  useEffect(() => {
+    if (clearSignal === 0) return;
+    clearPredictTimer();
+    dispatch({ type: 'CLEAR' });
+  }, [clearPredictTimer, clearSignal]);
+
+  useEffect(() => {
+    if (sampleSignal === 0 || !sampleStrokes || sampleStrokes.length === 0) return;
+    clearPredictTimer();
+    pendingProgrammaticPredictRef.current = true;
+    dispatch({ type: 'LOAD_STROKES', strokes: sampleStrokes });
+  }, [clearPredictTimer, sampleSignal, sampleStrokes]);
+
+  useEffect(() => {
+    if (!pendingProgrammaticPredictRef.current) return;
+    pendingProgrammaticPredictRef.current = false;
+    const pixels = extractPixels();
+    onPredict(pixels);
+  }, [state.present, extractPixels, onPredict]);
 
   // Pre-render path strings so we're not recomputing on every render
   // for strokes that haven't changed.
@@ -309,11 +349,7 @@ export function DrawingCanvas({
   }, []);
 
   const strokeCount = state.present.length;
-  const gridOpacityTarget = prefersReducedMotion
-    ? 0.25
-    : strokeCount === 0
-      ? 0.4
-      : 0;
+  const gridOpacityTarget = prefersReducedMotion ? 0.25 : strokeCount === 0 ? 0.4 : 0;
 
   const canUndo = state.past.length > 0;
   const canRedo = state.future.length > 0;
@@ -380,7 +416,7 @@ export function DrawingCanvas({
         {/* Strokes. White fill to match the 28x28 white-on-black extraction. */}
         <g>
           {renderedPaths.map((p) =>
-            p.d ? <path key={p.id} d={p.d} fill="#FFFFFF" stroke="none" /> : null
+            p.d ? <path key={p.id} d={p.d} fill="#FFFFFF" stroke="none" /> : null,
           )}
         </g>
       </svg>
@@ -390,39 +426,61 @@ export function DrawingCanvas({
           type="button"
           onClick={handleClear}
           disabled={disabled || strokeCount === 0}
-          className="clear-btn"
+          className="canvas-icon-button"
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.96 }}
           transition={springs.quick}
           aria-label="Clear drawing"
+          data-tooltip="Clear"
+          title="Clear"
         >
-          Clear
+          <Trash2 size={18} aria-hidden />
         </motion.button>
         <motion.button
           type="button"
           onClick={() => dispatch({ type: 'UNDO' })}
           disabled={disabled || !canUndo}
-          className="clear-btn"
+          className="canvas-icon-button"
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.96 }}
           transition={springs.quick}
           aria-label="Undo last stroke (Cmd+Z)"
           title="Undo (⌘Z)"
+          data-tooltip="Undo"
         >
-          Undo
+          <Undo2 size={18} aria-hidden />
         </motion.button>
         <motion.button
           type="button"
           onClick={() => dispatch({ type: 'REDO' })}
           disabled={disabled || !canRedo}
-          className="clear-btn"
+          className="canvas-icon-button"
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.96 }}
           transition={springs.quick}
           aria-label="Redo stroke (Cmd+Shift+Z)"
           title="Redo (⌘⇧Z)"
+          data-tooltip="Redo"
         >
-          Redo
+          <Redo2 size={18} aria-hidden />
+        </motion.button>
+        <motion.button
+          type="button"
+          onClick={() => {
+            if (!sampleStrokes || sampleStrokes.length === 0) return;
+            pendingProgrammaticPredictRef.current = true;
+            dispatch({ type: 'LOAD_STROKES', strokes: sampleStrokes });
+          }}
+          disabled={disabled || !sampleStrokes || sampleStrokes.length === 0}
+          className="canvas-icon-button"
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.96 }}
+          transition={springs.quick}
+          aria-label="Reload sample digit"
+          title="Reload sample"
+          data-tooltip="Sample"
+        >
+          <RotateCcw size={18} aria-hidden />
         </motion.button>
       </div>
 

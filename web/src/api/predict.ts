@@ -7,7 +7,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
  * browser WASM path is used whenever the server is unreachable or the
  * request explicitly forces offline mode.
  */
-export type PredictionSource = 'server' | 'browser';
+export type PredictionSource = 'server' | 'browser-wasm' | 'browser-js';
 
 export interface PredictionResponse {
   prediction: number;
@@ -67,11 +67,13 @@ export async function predict(pixels: number[], signal?: AbortSignal): Promise<P
 
     const { classifyInBrowser } = await import('../lib/wasmClassifier');
     const result = await classifyInBrowser(pixels);
-    return { ...result, source: 'browser' };
+    return { ...result, source: result.source ?? 'browser-wasm' };
   }
 }
 
 export async function healthCheck(): Promise<HealthResponse> {
-  const response = await axios.get<HealthResponse>(`${API_BASE}/health`);
+  const response = await axios.get<HealthResponse>(`${API_BASE}/health`, {
+    timeout: 1000,
+  });
   return response.data;
 }

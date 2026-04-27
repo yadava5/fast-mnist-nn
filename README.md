@@ -23,7 +23,8 @@ run in your browser.
 prediction, rotate the network.
 
 > Hosted demo is a Vercel preview; the `/predict` endpoint falls back to an
-> in-browser WASM build if the C++ server is cold.
+> in-browser WASM build if the C++ server is cold. If WASM artifacts are not
+> staged yet, the UI still runs with a browser-only demo classifier.
 
 ## 30-second demo
 
@@ -45,7 +46,9 @@ The library ships as three deployables. A CLI (`fast_mnist_cli`) trains and
 evaluates from the terminal. An HTTP server (`fast_mnist_server`, built on
 cpp-httplib + nlohmann/json) exposes `/health` and `/predict`. An Emscripten
 build compiles the same core to WebAssembly with `-msimd128`, so the web app
-has an offline fallback when no server is available.
+has an offline fallback when no server is available. The frontend also keeps
+a small JS fallback for free static previews that do not have generated WASM
+artifacts staged yet.
 
 The frontend is a Vite-bundled React 19 + TypeScript SPA. It uses Motion v12
 for transitions, Tailwind v4 with OKLCH tokens for the design system, and

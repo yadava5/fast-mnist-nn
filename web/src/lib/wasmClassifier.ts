@@ -12,6 +12,7 @@
  */
 
 import type { PredictionResponse } from '../api/predict';
+import { classifyWithJsFallback } from './jsFallbackClassifier';
 
 /**
  * Live instance produced by Embind. We treat it as opaque and only
@@ -109,17 +110,23 @@ function toNumberArray(v: unknown): number[] {
  * unaffected when toggled into WASM mode).
  */
 export async function classifyInBrowser(pixels: number[]): Promise<PredictionResponse> {
-  const { classifier } = await ensureWasm();
-  const t0 = performance.now();
-  const result = classifier.classify(pixels);
-  const t1 = performance.now();
+  try {
+    const { classifier } = await ensureWasm();
+    const t0 = performance.now();
+    const result = classifier.classify(pixels);
+    const t1 = performance.now();
 
-  return {
-    prediction: Number(result.prediction),
-    confidence: toNumberArray(result.confidence),
-    baseline_time_ms: 0,
-    optimized_time_ms: t1 - t0,
-    hidden_activations: toNumberArray(result.hidden_activations),
-    input_grad: toNumberArray(result.input_grad),
-  };
+    return {
+      prediction: Number(result.prediction),
+      confidence: toNumberArray(result.confidence),
+      baseline_time_ms: 0,
+      optimized_time_ms: t1 - t0,
+      hidden_activations: toNumberArray(result.hidden_activations),
+      input_grad: toNumberArray(result.input_grad),
+      source: 'browser-wasm',
+    };
+  } catch (error) {
+    console.warn('WASM classifier unavailable; using JS fallback.', error);
+    return classifyWithJsFallback(pixels);
+  }
 }

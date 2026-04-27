@@ -9,7 +9,7 @@ import { Edges, Layer } from './NeuralNetHero.Layers';
 import { gridPositions } from '../lib/layout';
 import { GlassBackdrop } from './NeuralNetHero.glass';
 
-const EDGE_COLOR = 'oklch(0.5 0.05 260)';
+const EDGE_COLOR = '#7dd3fc';
 
 /**
  * Auto-rotate the scene around Y when the user is not actively dragging.
@@ -97,20 +97,21 @@ export default function NeuralNetHeroScene() {
   const rootRef = useRef<Group>(null);
   const controlsRef = useRef<OrbitControlsImpl>(null);
 
-  // Layer geometry. Z spacing places the backdrop at -2.5, input at -1.2,
-  // hidden at 0, output at 1.2.
+  // Layer geometry uses a sampled visual grid, not every model weight.
+  // This keeps the hero readable on mobile while the copy still names
+  // the real 784 -> 100 -> 10 architecture.
   const { input, hidden, output } = useMemo(() => {
     return {
-      input: gridPositions(14, 14, 2.8, 2.8, -1.2),
-      hidden: gridPositions(10, 10, 2.2, 2.2, 0),
-      output: gridPositions(1, 10, 0, 2.4, 1.2),
+      input: gridPositions(5, 5, 2.25, 2.25, -1.2),
+      hidden: gridPositions(4, 4, 1.6, 1.6, 0),
+      output: gridPositions(1, 10, 0, 2.25, 1.2),
     };
   }, []);
 
   return (
     <Canvas
       dpr={[1, 1.75]}
-      camera={{ position: [3, 1.5, 4], fov: 45 }}
+      camera={{ position: [3, 1.4, 4.3], fov: 42 }}
       gl={{ powerPreference: 'high-performance', antialias: false }}
       frameloop={reduced ? 'demand' : 'always'}
     >
@@ -122,28 +123,28 @@ export default function NeuralNetHeroScene() {
 
         <Layer
           positions={input}
-          radius={0.055}
-          color="oklch(0.7 0.1 220)"
-          emissive="oklch(0.5 0.15 220)"
+          radius={0.066}
+          color="#7dd3fc"
+          emissive="#0ea5e9"
           emissiveIntensity={0.25}
         />
         <Layer
           positions={hidden}
-          radius={0.07}
-          color="oklch(0.7 0.22 280)"
-          emissive="oklch(0.5 0.2 280)"
+          radius={0.083}
+          color="#a78bfa"
+          emissive="#7c3aed"
           emissiveIntensity={0.25}
         />
         <Layer
           positions={output}
           radius={0.11}
-          color="oklch(0.7 0.22 280)"
-          emissive="oklch(0.5 0.2 280)"
+          color="#86efac"
+          emissive="#22c55e"
           emissiveIntensity={0.4}
         />
 
-        <Edges from={input} to={hidden} count={60} color={EDGE_COLOR} />
-        <Edges from={hidden} to={output} count={30} color={EDGE_COLOR} />
+        <Edges from={input} to={hidden} count={18} color={EDGE_COLOR} />
+        <Edges from={hidden} to={output} count={12} color={EDGE_COLOR} />
       </group>
 
       <AutoRotate rootRef={rootRef} controlsRef={controlsRef} disabled={reduced} />

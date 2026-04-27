@@ -2,7 +2,7 @@ import { useRef, useCallback } from 'react';
 
 export function useDebounce<T extends (...args: Parameters<T>) => void>(
   callback: T,
-  delay: number
+  delay: number,
 ): (...args: Parameters<T>) => void {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -15,13 +15,13 @@ export function useDebounce<T extends (...args: Parameters<T>) => void>(
         callback(...args);
       }, delay);
     },
-    [callback, delay]
+    [callback, delay],
   );
 }
 
 export function useDebouncedCallback<T extends (...args: Parameters<T>) => void>(
   callback: T,
-  delay: number
+  delay: number,
 ): { debouncedFn: (...args: Parameters<T>) => void; cancel: () => void } {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -39,7 +39,7 @@ export function useDebouncedCallback<T extends (...args: Parameters<T>) => void>
         callback(...args);
       }, delay);
     },
-    [callback, delay, cancel]
+    [callback, delay, cancel],
   );
 
   return { debouncedFn, cancel };

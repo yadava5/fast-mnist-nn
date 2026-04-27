@@ -2,7 +2,11 @@ export type Theme = 'dark' | 'light';
 
 export const THEME_KEY = 'theme';
 
-export function applyTheme(next: Theme) {
+interface ApplyThemeOptions {
+  animate?: boolean;
+}
+
+export function applyTheme(next: Theme, options: ApplyThemeOptions = {}) {
   const doc = document.documentElement;
   const run = () => {
     doc.dataset.theme = next;
@@ -14,9 +18,10 @@ export function applyTheme(next: Theme) {
     }
   };
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!reduced && 'startViewTransition' in document) {
-    (document as unknown as { startViewTransition: (cb: () => void) => void })
-      .startViewTransition(run);
+  if (options.animate && !reduced && 'startViewTransition' in document) {
+    (document as unknown as { startViewTransition: (cb: () => void) => void }).startViewTransition(
+      run,
+    );
   } else {
     run();
   }
@@ -29,7 +34,5 @@ export function readInitialTheme(): Theme {
   } catch {
     // ignored — fall through to system preference
   }
-  return window.matchMedia('(prefers-color-scheme: light)').matches
-    ? 'light'
-    : 'dark';
+  return 'dark';
 }
