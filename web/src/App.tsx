@@ -7,8 +7,9 @@ import { ActivationPanels } from './components/ActivationPanels';
 import { ThemeToggle } from './components/ThemeToggle';
 import { NeuralNetHero } from './components/NeuralNetHero';
 import { HeroBackdrop } from './components/HeroBackdrop';
-import { PipelineCard } from './components/PipelineCard';
+import { PipelineShowcase } from './components/PipelineShowcase';
 import { CommandPalette } from './components/CommandPalette';
+import { ScrollProgress } from './components/ScrollProgress';
 import { createSampleDigitFive } from './components/sampleDigits';
 import type { Stroke } from './components/strokeReducer';
 import { predict, healthCheck, type PredictionSource } from './api/predict';
@@ -125,6 +126,7 @@ function App() {
   return (
     <MotionConfig transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.9 }}>
       <div className="app">
+        <ScrollProgress />
         <motion.header className="header" initial={false}>
           <ThemeToggle className="theme-toggle" />
           <h1 className="brand-title">
@@ -231,25 +233,7 @@ function App() {
           </div>
         </motion.section>
 
-        <section id="pipeline" className="pipeline-section">
-          <div className="pipeline-sticky">
-            <PipelineCard
-              step="01"
-              title="You draw."
-              copy="28x28 canvas, pixel values in [0, 1]."
-            />
-            <PipelineCard
-              step="02"
-              title="C++ classifies."
-              copy="SIMD kernels (AVX-512 / AVX2 / NEON) run the forward pass."
-            />
-            <PipelineCard
-              step="03"
-              title="You see the answer."
-              copy="10 softmax probabilities, argmax wins."
-            />
-          </div>
-        </section>
+        <PipelineShowcase />
 
         <footer className="footer">
           <p>Built with C++ · SIMD kernels · OpenMP · Motion · React Three Fiber</p>
